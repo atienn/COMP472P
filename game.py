@@ -121,7 +121,7 @@ class Game:
 
     def is_valid_move(self, coords : CoordPair) -> bool:
         """Validate a move expressed as a CoordPair. TODO: WRITE MISSING CODE!!!"""
-        if not self.is_valid_coord(coords.src) or not self.is_valid_coord(coords.dst):
+        if not self.is_valid_coord(coords.src) or not self.is_valid_coord(coords.dst) or not self.coords_are_adjacent(coords.src,coords.dst):
             return False
         unit = self.get(coords.src) # The place where it comes from.
         if unit is None or unit.player != self.next_player:
@@ -200,6 +200,22 @@ class Game:
         if coord.row < 0 or coord.row >= dim or coord.col < 0 or coord.col >= dim:
             return False
         return True
+
+    def coords_are_adjacent(self, coord: Coord, coord2: Coord) -> bool:
+        if (coord.row is coord2.row and coord.col is coord2.col):
+            return True
+        elif (coord.col is coord2.col):
+            if (coord.row is coord2.row+1 or coord.row is coord2.row-1):
+                return True
+            else:
+                return False
+        elif (coord.row is coord2.row):
+            if (coord.col is coord2.col+1 or coord.col is coord2.col-1):
+                return True
+            else:
+                return False
+        else:
+            return False
 
     def read_move(self) -> CoordPair:
         """Read a move from keyboard and return as a CoordPair."""
