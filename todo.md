@@ -6,7 +6,6 @@ Thing that we need to do for the project. Expand as needed.
 - [ ] Units recognize being "engaged" and cannot move while in that state (excluding Tech & Virus)
 - [ ] Units cannot move back towards their "base" (excluding Tech & Virus)
 - [ ] Whenever a unit attacks or heals, it must correspond to the correct grid value according to its robot type
-- [ ] (optional) Sperate code into multiple files (e.g. "game.py", "input-output.py", "bot.py", etc) for the sake of code organization.
 - [ ] (optional) Bot Player that inputs random moves (just to validate end-to-end)
 
 ### D2
