@@ -103,7 +103,8 @@ class Game:
         """Remove unit at Coord if dead."""
         unit = self.get(coord)
         if unit is None: return
-        if unit is not unit.is_alive():
+        print(unit.is_alive())
+        if unit.is_alive() == False:
             self.set(coord,None)
             if unit.type == UnitType.AI:
                 if unit.player == Player.Attacker:
@@ -146,8 +147,8 @@ class Game:
             print("The player has chosen to attack!")
             attacking = self.get(coords.src)
             defending = self.get(coords.dst)
-            defending.mod_health(-1 * attacking.damage_amount(defending))
-            attacking.mod_health(-1 * defending.damage_amount(attacking))
+            self.mod_health(coords.dst, -1 * attacking.damage_amount(defending))
+            self.mod_health(coords.src, -1 * defending.damage_amount(attacking))
             return (True,"")
         elif self.is_valid_move(coords) == "repair":
             print("The player has chosen to repair!")
@@ -232,6 +233,7 @@ class Game:
                     print(f"Player {self.next_player.name}: ",end='')
                     print(result)
                     self.next_turn()
+                    self.is_finished()
                     break
                 else:
                     print("The move is not valid! Try again.")
