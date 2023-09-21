@@ -122,17 +122,28 @@ class Game:
         """Validate a move expressed as a CoordPair. TODO: WRITE MISSING CODE!!!"""
         if not self.is_valid_coord(coords.src) or not self.is_valid_coord(coords.dst):
             return False
-        unit = self.get(coords.src)
+        unit = self.get(coords.src) # The place where it comes from.
         if unit is None or unit.player != self.next_player:
             return False
-        unit = self.get(coords.dst)
-        return (unit is None)
+        unit = self.get(coords.dst) # The place where it goes.
+        if unit is None: # TODO stop letting things teleport around
+            return "move"
+        elif unit.player != self.next_player:
+            return "attack"
+        else:
+            return "failure"
 
     def perform_move(self, coords : CoordPair) -> Tuple[bool,str]:
         """Validate and perform a move expressed as a CoordPair. TODO: WRITE MISSING CODE!!!"""
-        if self.is_valid_move(coords):
+        if self.is_valid_move(coords) == "move":
+            print("The player has chosen to move.")
             self.set(coords.dst,self.get(coords.src))
             self.set(coords.src,None)
+            return (True,"")
+        elif self.is_valid_move(coords) == "attack":
+            print("The player has chosen to attack!")
+            unit = self.get(coords.dst)
+            unit.mod_health(-1) # currently always -1, change this later TODO
             return (True,"")
         return (False,"invalid move")
 
