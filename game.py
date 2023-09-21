@@ -130,7 +130,7 @@ class Game:
             return "move"
         elif unit.player != self.next_player:
             return "attack"
-        elif unit.player == self.next_player:
+        elif unit.player == self.next_player: # TODO ban repair if the target unit would be healed 0
             return "repair"
         else:
             return "failure"
@@ -147,6 +147,7 @@ class Game:
             attacking = self.get(coords.src)
             defending = self.get(coords.dst)
             defending.mod_health(-1 * attacking.damage_amount(defending))
+            attacking.mod_health(-1 * defending.damage_amount(attacking))
             return (True,"")
         elif self.is_valid_move(coords) == "repair":
             print("The player has chosen to repair!")
