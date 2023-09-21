@@ -130,6 +130,8 @@ class Game:
             return "move"
         elif unit.player != self.next_player:
             return "attack"
+        elif unit.player == self.next_player:
+            return "repair"
         else:
             return "failure"
 
@@ -143,7 +145,12 @@ class Game:
         elif self.is_valid_move(coords) == "attack":
             print("The player has chosen to attack!")
             unit = self.get(coords.dst)
-            unit.mod_health(-1) # currently always -1, change this later TODO
+            unit.mod_health(-1) # currently always -1, change this later to match the grid TODO
+            return (True,"")
+        elif self.is_valid_move(coords) == "repair":
+            print("The player has chosen to repair!")
+            unit = self.get(coords.dst)
+            unit.mod_health(1) # currently always 1, change this later to match the grid TODO
             return (True,"")
         return (False,"invalid move")
 
