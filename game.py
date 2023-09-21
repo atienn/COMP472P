@@ -144,13 +144,15 @@ class Game:
             return (True,"")
         elif self.is_valid_move(coords) == "attack":
             print("The player has chosen to attack!")
-            unit = self.get(coords.dst)
-            unit.mod_health(-1) # currently always -1, change this later to match the grid TODO
+            attacking = self.get(coords.src)
+            defending = self.get(coords.dst)
+            defending.mod_health(-1 * attacking.damage_amount(defending))
             return (True,"")
         elif self.is_valid_move(coords) == "repair":
             print("The player has chosen to repair!")
-            unit = self.get(coords.dst)
-            unit.mod_health(1) # currently always 1, change this later to match the grid TODO
+            repairing = self.get(coords.src)
+            repaired = self.get(coords.dst)
+            repaired.mod_health(repairing.repair_amount(repaired))
             return (True,"")
         return (False,"invalid move")
 
