@@ -103,7 +103,6 @@ class Game:
         """Remove unit at Coord if dead."""
         unit = self.get(coord)
         if unit is None: return
-        print(unit.is_alive())
         if unit.is_alive() == False:
             self.set(coord,None)
             if unit.type == UnitType.AI:
@@ -129,6 +128,8 @@ class Game:
         unit = self.get(coords.dst) # The place where it goes.
         if unit is None: # TODO stop letting things teleport around
             return "move"
+        elif coords.src == coords.dst:
+            return "kaboom"
         elif unit.player != self.next_player:
             return "attack"
         elif unit.player == self.next_player: # TODO ban repair if the target unit would be healed 0
@@ -155,6 +156,11 @@ class Game:
             repairing = self.get(coords.src)
             repaired = self.get(coords.dst)
             repaired.mod_health(repairing.repair_amount(repaired))
+            return (True,"")
+        elif self.is_valid_move(coords) == "kaboom":
+            print("The robot explodes in a fiery blast!!")
+            self.mod_health(coords.dst, -99)
+            self.explode(coords.dst)
             return (True,"")
         return (False,"invalid move")
 
@@ -216,6 +222,12 @@ class Game:
                 return False
         else:
             return False
+        
+    def explode(self, blast_point: Coord):
+        for x in range(3):
+            for y in range(3):
+                exploding_tile = Coord(blast_point.row-1+x,blast_point.col-1+y)
+                self.mod_health(exploding_tile,-2)
 
     def read_move(self) -> CoordPair:
         """Read a move from keyboard and return as a CoordPair."""
