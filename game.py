@@ -1,16 +1,17 @@
 from __future__ import annotations
-import argparse
 import copy
 from datetime import datetime
 from enum import Enum
 from dataclasses import dataclass, field
 from time import sleep
-from typing import Tuple, TypeVar, Type, Iterable, ClassVar
+from typing import Tuple, Iterable
 import random
 import requests
 
+from output import log
 from utils import Coord, CoordPair, Player
 from units import UnitAction, UnitType, Unit
+
 
 
 class GameType(Enum):
@@ -150,21 +151,21 @@ class Game:
         """Determines the action expressed by a CoordPair."""
         # Check that coordinates are valid.
         if not self.is_valid_coord(coords.src) or not self.is_valid_coord(coords.dst):
-            print("Specified coordinate does not exist!")
+            log("Specified coordinate does not exist!")
             return UnitAction.Invalid
         
         # The unit that will do something this turn.
         actingUnit = self.get(coords.src) 
         if actingUnit is None:
-            print("Coordinate does not contain a unit!")
+            log("Coordinate does not contain a unit!")
             return UnitAction.Invalid
         if actingUnit.player != self.next_player:
-            print("Unit does not belong to this player!")
+            log("Unit does not belong to this player!")
             return UnitAction.Invalid
         if coords.are_equal():
             return UnitAction.Kaboom
         if not coords.are_adjacent_cross():
-            print("Units can only move in cardinal directions!")
+            log("Units can only move in cardinal directions!")
             return UnitAction.Invalid
         
         # The unit (if any) that will be acted upon (attacked/repaired).
@@ -176,17 +177,17 @@ class Game:
                 # Check if the destination isn't closer to home base
                 deltaX, deltaY = coords.delta()
                 if actingUnit.player == Player.Defender and (deltaX < 0 or deltaY < 0):
-                    print("Non-tech defender unit cannot move towards its base.")
+                    log("Non-tech defender unit cannot move towards its base.")
                     return UnitAction.Invalid
                 elif actingUnit.player == Player.Attacker and (deltaX > 0 or deltaY > 0):
-                    print("Non-virus attacker unit cannot move towards its base.")
+                    log("Non-virus attacker unit cannot move towards its base.")
                     return UnitAction.Invalid                  
 
                 # Check if the unit isn't "engaged" with enemy unit
                 for adjacentTile in coords.src.iter_adjacent():
                     adjacentUnit = self.get(adjacentTile)
                     if adjacentUnit is not None and actingUnit.player != adjacentUnit.player:
-                        print("Unit cannot move; it is engaged with unit at: " + adjacentTile.to_string())
+                        log("Unit cannot move; it is engaged with unit at: " + adjacentTile.to_string())
                         return UnitAction.Invalid
 
             return UnitAction.Move # With guard condition above, unit can only move one space.
@@ -197,7 +198,7 @@ class Game:
             return UnitAction.Repair
         
         # default case
-        print("Action was not recognized.")
+        log("Action was not recognized.")
         return UnitAction.Invalid
 
     def perform_move(self, coords : CoordPair) -> Tuple[bool,str]:
@@ -266,18 +267,18 @@ class Game:
             if coords is not None and self.is_valid_coord(coords.src) and self.is_valid_coord(coords.dst):
                 return coords
             else:
-                print('Invalid coordinates! Try again.')
+                log('Invalid coordinates! Try again.')
     
     def human_turn(self):
         """Human player plays a move (or get via broker)."""
         if self.options.broker is not None:
-            print("Getting next move with auto-retry from game broker...")
+            log("Getting next move with auto-retry from game broker...")
             while True:
                 mv = self.get_move_from_broker()
                 if mv is not None:
                     (success,result) = self.perform_move(mv)
-                    print(f"Broker {self.next_player.name}: ",end='')
-                    print(result)
+                    log(f"Broker {self.next_player.name}: ",end='')
+                    log(result)
                     if success:
                         self.next_turn()
                         break
@@ -287,13 +288,13 @@ class Game:
                 mv = self.read_move()
                 (success,result) = self.perform_move(mv)
                 if success:
-                    print(f"Player {self.next_player.name}: ",end='')
-                    print(result)
+                    log(f"Player {self.next_player.name}: ",end='')
+                    log(result)
                     self.next_turn()
                     self.is_finished()
                     break
                 else:
-                    print("The move is not valid! Try again.")
+                    log("The move is not valid! Try again.")
 
     #endregion
 
@@ -305,8 +306,8 @@ class Game:
         if mv is None: return None
         (success,result) = self.perform_move(mv)
         if success:
-            print(f"Computer {self.next_player.name}: ",end='')
-            print(result)
+            log(f"Computer {self.next_player.name}: ",end='')
+            log(result)
             self.next_turn()
         return mv
 
@@ -344,16 +345,16 @@ class Game:
         (score, move, avg_depth) = self.random_move()
         elapsed_seconds = (datetime.now() - start_time).total_seconds()
         self.stats.total_seconds += elapsed_seconds
-        print(f"Heuristic score: {score}")
-        print(f"Average recursive depth: {avg_depth:0.1f}")
-        print(f"Evals per depth: ",end='')
+        log(f"Heuristic score: {score}")
+        log(f"Average recursive depth: {avg_depth:0.1f}")
+        log(f"Evals per depth: ",end='')
         for k in sorted(self.stats.evaluations_per_depth.keys()):
-            print(f"{k}:{self.stats.evaluations_per_depth[k]} ",end='')
-        print()
+            log(f"{k}:{self.stats.evaluations_per_depth[k]} ",end='')
+        log()
         total_evals = sum(self.stats.evaluations_per_depth.values())
         if self.stats.total_seconds > 0:
-            print(f"Eval perf.: {total_evals/self.stats.total_seconds/1000:0.1f}k/s")
-        print(f"Elapsed time: {elapsed_seconds:0.1f}s")
+            log(f"Eval perf.: {total_evals/self.stats.total_seconds/1000:0.1f}k/s")
+        log(f"Elapsed time: {elapsed_seconds:0.1f}s")
         return move
 
     #endregion
@@ -372,12 +373,12 @@ class Game:
         try:
             r = requests.post(self.options.broker, json=data)
             if r.status_code == 200 and r.json()['success'] and r.json()['data'] == data:
-                # print(f"Sent move to broker: {move}")
+                # log(f"Sent move to broker: {move}")
                 pass
             else:
-                print(f"Broker error: status code: {r.status_code}, response: {r.json()}")
+                log(f"Broker error: status code: {r.status_code}, response: {r.json()}")
         except Exception as error:
-            print(f"Broker error: {error}")
+            log(f"Broker error: {error}")
 
     def get_move_from_broker(self) -> CoordPair | None:
         """Get a move from the game broker."""
@@ -394,19 +395,19 @@ class Game:
                             Coord(data['from']['row'],data['from']['col']),
                             Coord(data['to']['row'],data['to']['col'])
                         )
-                        print(f"Got move from broker: {move}")
+                        log(f"Got move from broker: {move}")
                         return move
                     else:
-                        # print("Got broker data for wrong turn.")
-                        # print(f"Wanted {self.turns_played+1}, got {data['turn']}")
+                        # log("Got broker data for wrong turn.")
+                        # log(f"Wanted {self.turns_played+1}, got {data['turn']}")
                         pass
                 else:
-                    # print("Got no data from broker")
+                    # log("Got no data from broker")
                     pass
             else:
-                print(f"Broker error: status code: {r.status_code}, response: {r.json()}")
+                log(f"Broker error: status code: {r.status_code}, response: {r.json()}")
         except Exception as error:
-            print(f"Broker error: {error}")
+            log(f"Broker error: {error}")
         return None
 
     #endregion
