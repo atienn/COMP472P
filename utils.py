@@ -2,7 +2,7 @@ from __future__ import annotations
 import copy
 from enum import Enum
 from dataclasses import dataclass, field
-from typing import Iterable
+from typing import Tuple, Iterable
 
 class Player(Enum):
     """The 2 players."""
@@ -165,6 +165,10 @@ class CoordPair:
             return coords
         else:
             return None
+        
+    def delta(self: CoordPair) -> Tuple[int, int]:
+        """The space difference between both coordinates."""
+        return (self.dst.row - self.src.row, self.dst.col - self.src.col)
 
     def are_equal(self: CoordPair) -> bool:
         return Coord.are_equal(self.src, self.dst)

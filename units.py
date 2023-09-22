@@ -52,6 +52,10 @@ class Unit:
     def is_alive(self) -> bool:
         """Are we alive ?"""
         return self.health > 0
+    
+    def can_move_freely(self) -> bool:
+        """If this unit is allowed to disengage from combat or move towards their base."""
+        return self.type == UnitType.Tech or self.type == UnitType.Virus
 
     def mod_health(self, health_delta : int):
         """Modify this unit's health by delta amount."""

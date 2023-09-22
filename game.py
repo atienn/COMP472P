@@ -150,28 +150,54 @@ class Game:
         """Determines the action expressed by a CoordPair."""
         # Check that coordinates are valid.
         if not self.is_valid_coord(coords.src) or not self.is_valid_coord(coords.dst):
+            print("Specified coordinate does not exist!")
             return UnitAction.Invalid
         
         # The unit that will do something this turn.
         actingUnit = self.get(coords.src) 
-        if actingUnit is None or actingUnit.player != self.next_player:
+        if actingUnit is None:
+            print("Coordinate does not contain a unit!")
+            return UnitAction.Invalid
+        if actingUnit.player != self.next_player:
+            print("Unit does not belong to this player!")
             return UnitAction.Invalid
         if coords.are_equal():
             return UnitAction.Kaboom
         if not coords.are_adjacent_cross():
+            print("Units can only move in cardinal directions!")
             return UnitAction.Invalid
         
         # The unit (if any) that will be acted upon (attacked/repaired).
         otherUnit = self.get(coords.dst)
         
         if otherUnit is None:
+            # If unit doesn't have free movement, restrictions apply
+            if not actingUnit.can_move_freely():
+                # Check if the destination isn't closer to home base
+                deltaX, deltaY = coords.delta()
+                if actingUnit.player == Player.Defender and (deltaX < 0 or deltaY < 0):
+                    print("Non-tech defender unit cannot move towards its base.")
+                    return UnitAction.Invalid
+                elif actingUnit.player == Player.Attacker and (deltaX > 0 or deltaY > 0):
+                    print("Non-virus attacker unit cannot move towards its base.")
+                    return UnitAction.Invalid                  
+
+                # Check if the unit isn't "engaged" with enemy unit
+                for adjacentTile in coords.src.iter_adjacent():
+                    adjacentUnit = self.get(adjacentTile)
+                    if adjacentUnit is not None and actingUnit.player != adjacentUnit.player:
+                        print("Unit cannot move; it is engaged with unit at: " + adjacentTile.to_string())
+                        return UnitAction.Invalid
+
             return UnitAction.Move # With guard condition above, unit can only move one space.
+        
         if otherUnit.player != self.next_player:
             return UnitAction.Attack
         if otherUnit.player == self.next_player and Unit.repair_amount(actingUnit, otherUnit) > 0:
             return UnitAction.Repair
         
         # default case
+        print("Action was not recognized.")
         return UnitAction.Invalid
 
     def perform_move(self, coords : CoordPair) -> Tuple[bool,str]:
@@ -181,7 +207,7 @@ class Game:
         if action == UnitAction.Move:
             self.set(coords.dst,self.get(coords.src))
             self.set(coords.src,None)
-            return (True,"The player has chosen to move.")
+            return (True,"The player has chosen to move to: " + coords.dst.to_string())
         if action == UnitAction.Kaboom:
             self.destroy(coords.dst)
             self.explode(coords.dst)
@@ -195,10 +221,10 @@ class Game:
             # but do damage the calculation both ways just in case
             self.mod_health(coords.dst, -actingUnit.damage_amount(otherUnit))
             self.mod_health(coords.src, -otherUnit.damage_amount(actingUnit))
-            return (True,"The player has chosen to attack!")
+            return (True,"The unit attacks an enemy at:" + coords.dst.to_string())
         if action == UnitAction.Repair:
             otherUnit.mod_health(actingUnit.repair_amount(otherUnit))
-            return (True,"The player has chosen to repair!")
+            return (True,"The unit repairs an ally at: " + coords.dst.to_string())
 
         return (False,"invalid move")
 
