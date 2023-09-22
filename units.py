@@ -50,6 +50,16 @@ class Unit:
         """Are we alive ?"""
         return self.health > 0
     
+    def unit_name_string(self) -> str:
+        unit_names = {
+            UnitType.Program : "Program",
+            UnitType.Tech : "Tech",
+            UnitType.Virus : "Virus",
+            UnitType.Firewall : "Firewall",
+            UnitType.AI : "AI",
+        }
+        return unit_names[self.type]
+    
     def can_move_freely(self) -> bool:
         """If this unit is allowed to disengage from combat or move towards their base."""
         return self.type == UnitType.Tech or self.type == UnitType.Virus

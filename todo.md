@@ -3,10 +3,6 @@ Thing that we need to do for the project. Expand as needed.
 
 ### 
 
-- [ ] More precise logging 
-* Actions (c4 to c3)
-* winner in how many turns
-
 - [x] Units attack/heal when trying to move into another's space
 - [x] Remove units when they die
 - [x] Units recognize being "engaged" and cannot move while in that state (excluding Tech & Virus)

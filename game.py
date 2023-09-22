@@ -202,17 +202,18 @@ class Game:
         return UnitAction.Invalid
 
     def perform_move(self, coords : CoordPair) -> Tuple[bool,str]:
-        """Validate and perform an action expressed by a CoordPair. TODO: WRITE MISSING CODE!!!"""
+        """Validate and perform an action expressed by a CoordPair."""
         action = self.determine_action(coords)
 
         if action == UnitAction.Move:
             self.set(coords.dst,self.get(coords.src))
             self.set(coords.src,None)
-            return (True,"The player has chosen to move to: " + coords.dst.to_string())
+            return (True,f"{self.next_player.name}'s {self.get(coords.dst).unit_name_string()} moves from {coords.src.to_string()} to {coords.dst.to_string()}.")
         if action == UnitAction.Kaboom:
+            exploder = self.get(coords.dst)
             self.destroy(coords.dst)
             self.explode(coords.dst)
-            return (True,"The robot explodes in a fiery blast!!")
+            return (True,f"{self.next_player.name}'s {exploder.unit_name_string()} at {coords.dst.to_string()} explodes in a fiery blast!! (2 damage to all nearby units)")
 
         actingUnit = self.get(coords.src)
         otherUnit = self.get(coords.dst)
@@ -222,10 +223,11 @@ class Game:
             # but do damage the calculation both ways just in case
             self.mod_health(coords.dst, -actingUnit.damage_amount(otherUnit))
             self.mod_health(coords.src, -otherUnit.damage_amount(actingUnit))
-            return (True,"The unit attacks an enemy at:" + coords.dst.to_string())
+            return (True,f"{self.next_player.name}'s {self.get(coords.src).unit_name_string()} at {coords.src.to_string()} attacks the {self.get(coords.dst).unit_name_string()} at {coords.dst.to_string()}! ({actingUnit.damage_amount(otherUnit)} damage dealt, {otherUnit.damage_amount(actingUnit)} damage taken as retaliation)")
         if action == UnitAction.Repair:
-            otherUnit.mod_health(actingUnit.repair_amount(otherUnit))
-            return (True,"The unit repairs an ally at: " + coords.dst.to_string())
+            health_value = actingUnit.repair_amount(otherUnit)
+            otherUnit.mod_health(health_value)
+            return (True,f"{self.next_player.name}'s {self.get(coords.src).unit_name_string()} at {coords.src.to_string()} repairs their {self.get(coords.dst).unit_name_string()} ally at {coords.dst.to_string()}! ({health_value} damage repaired)")
 
         return (False,"invalid move")
 
