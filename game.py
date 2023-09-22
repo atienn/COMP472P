@@ -10,7 +10,7 @@ import random
 import requests
 
 from utils import Coord, CoordPair, Player
-from units import UnitType, Unit
+from units import UnitAction, UnitType, Unit
 
 
 class GameType(Enum):
@@ -47,6 +47,7 @@ class Stats:
 
 @dataclass(slots=True)
 class Game:
+
     """Representation of the game state."""
     board: list[list[Unit | None]] = field(default_factory=list)
     next_player: Player = Player.Attacker
@@ -55,6 +56,8 @@ class Game:
     stats: Stats = field(default_factory=Stats)
     _attacker_has_ai : bool = True
     _defender_has_ai : bool = True
+
+    #region BOARD
 
     def __post_init__(self):
         """Automatically called after class init to set up the default board state."""
@@ -87,6 +90,17 @@ class Game:
         """Check if contents of a board cell of the game at Coord is empty (must be valid coord)."""
         return self.board[coord.row][coord.col] is None
 
+    def is_valid_coord(self, coord: Coord) -> bool:
+        """Check if a Coord is valid within out board dimensions."""
+        dim = self.options.dim
+        if coord.row < 0 or coord.row >= dim or coord.col < 0 or coord.col >= dim:
+            return False
+        return True
+
+    #endregion
+
+    #region UNIT BEHAVIOR
+
     def get(self, coord : Coord) -> Unit | None:
         """Get contents of a board cell of the game at Coord."""
         if self.is_valid_coord(coord):
@@ -117,117 +131,106 @@ class Game:
         if target is not None:
             target.mod_health(health_delta)
             self.remove_dead(coord)
+    
+    def destroy(self, coord: Coord): 
+        target = self.get(coord)
+        if target is not None:
+            target.health = -1 # kill unit outright
+            self.remove_dead(coord)
 
-    def is_valid_move(self, coords : CoordPair) -> bool:
-        """Validate a move expressed as a CoordPair. TODO: WRITE MISSING CODE!!!"""
-        if not self.is_valid_coord(coords.src) or not self.is_valid_coord(coords.dst) or not self.coords_are_adjacent(coords.src,coords.dst):
-            return False
-        unit = self.get(coords.src) # The place where it comes from.
-        if unit is None or unit.player != self.next_player:
-            return False
-        unit = self.get(coords.dst) # The place where it goes.
-        if unit is None: # TODO stop letting things teleport around
-            return "move"
-        elif coords.src == coords.dst:
-            return "kaboom"
-        elif unit.player != self.next_player:
-            return "attack"
-        elif unit.player == self.next_player: # TODO ban repair if the target unit would be healed 0
-            return "repair"
-        else:
-            return "failure"
+    def explode(self, blast_point: Coord):
+        for x in range(3):
+            for y in range(3):
+                exploding_tile = Coord(blast_point.row-1+x,blast_point.col-1+y)
+                self.mod_health(exploding_tile, -2)
+
+    # Swapped to using Enums instead of hard-coded string values simply because it's less likely to result
+    # in errors or unexpected behavior (reminder that things like "false" evaluates to boolean False in python)
+    def determine_action(self, coords : CoordPair) -> UnitAction:
+        """Determines the action expressed by a CoordPair."""
+        # Check that coordinates are valid.
+        if not self.is_valid_coord(coords.src) or not self.is_valid_coord(coords.dst):
+            return UnitAction.Invalid
+        
+        # The unit that will do something this turn.
+        actingUnit = self.get(coords.src) 
+        if actingUnit is None or actingUnit.player != self.next_player:
+            return UnitAction.Invalid
+        if coords.are_equal():
+            return UnitAction.Kaboom
+        if not coords.are_adjacent_cross():
+            return UnitAction.Invalid
+        
+        # The unit (if any) that will be acted upon (attacked/repaired).
+        otherUnit = self.get(coords.dst)
+        
+        if otherUnit is None:
+            return UnitAction.Move # With guard condition above, unit can only move one space.
+        if otherUnit.player != self.next_player:
+            return UnitAction.Attack
+        if otherUnit.player == self.next_player and Unit.repair_amount(actingUnit, otherUnit) > 0:
+            return UnitAction.Repair
+        
+        # default case
+        return UnitAction.Invalid
 
     def perform_move(self, coords : CoordPair) -> Tuple[bool,str]:
-        """Validate and perform a move expressed as a CoordPair. TODO: WRITE MISSING CODE!!!"""
-        if self.is_valid_move(coords) == "move":
-            print("The player has chosen to move.")
+        """Validate and perform an action expressed by a CoordPair. TODO: WRITE MISSING CODE!!!"""
+        action = self.determine_action(coords)
+
+        if action == UnitAction.Move:
             self.set(coords.dst,self.get(coords.src))
             self.set(coords.src,None)
-            return (True,"")
-        elif self.is_valid_move(coords) == "attack":
-            print("The player has chosen to attack!")
-            attacking = self.get(coords.src)
-            defending = self.get(coords.dst)
-            self.mod_health(coords.dst, -1 * attacking.damage_amount(defending))
-            self.mod_health(coords.src, -1 * defending.damage_amount(attacking))
-            return (True,"")
-        elif self.is_valid_move(coords) == "repair":
-            print("The player has chosen to repair!")
-            repairing = self.get(coords.src)
-            repaired = self.get(coords.dst)
-            repaired.mod_health(repairing.repair_amount(repaired))
-            return (True,"")
-        elif self.is_valid_move(coords) == "kaboom":
-            print("The robot explodes in a fiery blast!!")
-            self.mod_health(coords.dst, -99)
+            return (True,"The player has chosen to move.")
+        if action == UnitAction.Kaboom:
+            self.destroy(coords.dst)
             self.explode(coords.dst)
-            return (True,"")
+            return (True,"The robot explodes in a fiery blast!!")
+
+        actingUnit = self.get(coords.src)
+        otherUnit = self.get(coords.dst)
+
+        if action == UnitAction.Attack:
+            # both units should always deal the same damage to one another, 
+            # but do damage the calculation both ways just in case
+            self.mod_health(coords.dst, -actingUnit.damage_amount(otherUnit))
+            self.mod_health(coords.src, -otherUnit.damage_amount(actingUnit))
+            return (True,"The player has chosen to attack!")
+        if action == UnitAction.Repair:
+            otherUnit.mod_health(actingUnit.repair_amount(otherUnit))
+            return (True,"The player has chosen to repair!")
+
         return (False,"invalid move")
+
+    #endregion
+
+    #region GAME LIFECYCLE
 
     def next_turn(self):
         """Transitions game to the next turn."""
         self.next_player = self.next_player.next()
         self.turns_played += 1
 
-    def to_string(self) -> str:
-        """Pretty text representation of the game."""
-        dim = self.options.dim
-        output = ""
-        output += f"Next player: {self.next_player.name}\n"
-        output += f"Turns played: {self.turns_played}\n"
-        coord = Coord()
-        output += "\n   "
-        for col in range(dim):
-            coord.col = col
-            label = coord.col_string()
-            output += f"{label:^3} "
-        output += "\n"
-        for row in range(dim):
-            coord.row = row
-            label = coord.row_string()
-            output += f"{label}: "
-            for col in range(dim):
-                coord.col = col
-                unit = self.get(coord)
-                if unit is None:
-                    output += " .  "
-                else:
-                    output += f"{str(unit):^3} "
-            output += "\n"
-        return output
+    # this method is unused
+    def is_finished(self) -> bool:
+        """Check if the game is over."""
+        return self.has_winner() is not None
 
-    def __str__(self) -> str:
-        """Default string representation of a game."""
-        return self.to_string()
-    
-    def is_valid_coord(self, coord: Coord) -> bool:
-        """Check if a Coord is valid within out board dimensions."""
-        dim = self.options.dim
-        if coord.row < 0 or coord.row >= dim or coord.col < 0 or coord.col >= dim:
-            return False
-        return True
+    def has_winner(self) -> Player | None:
+        """Check if the game is over and returns winner"""
+        if self.options.max_turns is not None and self.turns_played >= self.options.max_turns:
+            return Player.Defender
+        elif self._attacker_has_ai:
+            if self._defender_has_ai:
+                return None
+            else:
+                return Player.Attacker    
+        elif self._defender_has_ai:
+            return Player.Defender
 
-    def coords_are_adjacent(self, coord: Coord, coord2: Coord) -> bool:
-        if (coord.row is coord2.row and coord.col is coord2.col):
-            return True
-        elif (coord.col is coord2.col):
-            if (coord.row is coord2.row+1 or coord.row is coord2.row-1):
-                return True
-            else:
-                return False
-        elif (coord.row is coord2.row):
-            if (coord.col is coord2.col+1 or coord.col is coord2.col-1):
-                return True
-            else:
-                return False
-        else:
-            return False
-        
-    def explode(self, blast_point: Coord):
-        for x in range(3):
-            for y in range(3):
-                exploding_tile = Coord(blast_point.row-1+x,blast_point.col-1+y)
-                self.mod_health(exploding_tile,-2)
+    #endregion
+
+    #region HUMAN TURN
 
     def read_move(self) -> CoordPair:
         """Read a move from keyboard and return as a CoordPair."""
@@ -266,6 +269,10 @@ class Game:
                 else:
                     print("The move is not valid! Try again.")
 
+    #endregion
+
+    #region COMPUTER TURN
+
     def computer_turn(self) -> CoordPair | None:
         """Computer plays a move."""
         mv = self.suggest_move()
@@ -284,23 +291,6 @@ class Game:
             if unit is not None and unit.player == player:
                 yield (coord,unit)
 
-    # this method is unused
-    def is_finished(self) -> bool:
-        """Check if the game is over."""
-        return self.has_winner() is not None
-
-    def has_winner(self) -> Player | None:
-        """Check if the game is over and returns winner"""
-        if self.options.max_turns is not None and self.turns_played >= self.options.max_turns:
-            return Player.Defender
-        elif self._attacker_has_ai:
-            if self._defender_has_ai:
-                return None
-            else:
-                return Player.Attacker    
-        elif self._defender_has_ai:
-            return Player.Defender
-
     def move_candidates(self) -> Iterable[CoordPair]:
         """Generate valid move candidates for the next player."""
         move = CoordPair()
@@ -308,7 +298,7 @@ class Game:
             move.src = src
             for dst in src.iter_adjacent():
                 move.dst = dst
-                if self.is_valid_move(move):
+                if self.determine_action(move) != UnitAction.Invalid:
                     yield move.clone()
             move.dst = src
             yield move.clone()
@@ -339,6 +329,10 @@ class Game:
             print(f"Eval perf.: {total_evals/self.stats.total_seconds/1000:0.1f}k/s")
         print(f"Elapsed time: {elapsed_seconds:0.1f}s")
         return move
+
+    #endregion
+
+    #region BROKER
 
     def post_move_to_broker(self, move: CoordPair):
         """Send a move to the game broker."""
@@ -389,3 +383,39 @@ class Game:
             print(f"Broker error: {error}")
         return None
 
+    #endregion
+
+    #region STRING REPRESENTATION
+
+    def to_string(self) -> str:
+        """Pretty text representation of the game."""
+        dim = self.options.dim
+        output = ""
+        output += f"Next player: {self.next_player.name}\n"
+        output += f"Turns played: {self.turns_played}\n"
+        coord = Coord()
+        output += "\n   "
+        for col in range(dim):
+            coord.col = col
+            label = coord.col_string()
+            output += f"{label:^3} "
+        output += "\n"
+        for row in range(dim):
+            coord.row = row
+            label = coord.row_string()
+            output += f"{label}: "
+            for col in range(dim):
+                coord.col = col
+                unit = self.get(coord)
+                if unit is None:
+                    output += " .  "
+                else:
+                    output += f"{str(unit):^3} "
+            output += "\n"
+        return output
+
+    def __str__(self) -> str:
+        """Default string representation of a game."""
+        return self.to_string()
+    
+    #endregion

@@ -2,7 +2,7 @@ from __future__ import annotations
 import copy
 from enum import Enum
 from dataclasses import dataclass, field
-from typing import Tuple, TypeVar, Type, Iterable, ClassVar
+from typing import Iterable
 
 class Player(Enum):
     """The 2 players."""
@@ -17,6 +17,7 @@ class Player(Enum):
             return Player.Defender
         else:
             return Player.Attacker
+            
 
 ##############################################################################################################
 
@@ -78,7 +79,41 @@ class Coord:
             return coord
         else:
             return None
+    
+    @classmethod
+    def are_equal(cls, coord1 : Coord, coord2 : Coord) -> bool:
+        return coord1.row == coord2.row and coord1.col == coord2.col
 
+    @classmethod
+    def are_adjacent_cross(cls, coord1 : Coord, coord2 : Coord) -> bool:
+        """Checks if the two coordinates are adjacent (excluding diagonals)"""
+        
+        # If the coordinates are more than 1 away in any dimension -> false
+        deltaX = abs(coord1.row - coord2.row)
+        if(deltaX > 1): return False
+        deltaY = abs(coord1.col - coord2.col)
+        if(deltaY > 1): return False
+
+        # After the guard checks above, the delta values can only be 0 or 1.
+        # If both are 0, the coordinates point to the same cell, if both are 1, they are diagonal.
+        return deltaX != deltaY
+
+    @classmethod
+    def are_adjecent(cls, coord1 : Coord, coord2 : Coord) -> bool:
+        """Checks if the two coordinates are adjacent (including diagonals)"""
+    
+        # If the coordinates are more than 1 away in any dimension -> false
+        deltaX = abs(coord1.row - coord2.row)
+        if(deltaX > 1): return False
+        deltaY = abs(coord1.col - coord2.col)
+        if(deltaY > 1): return False
+
+        # After the guard checks above, the delta values can only be 0 or 1.
+        # We just need to ensure that both coordinates don't point to the same cell.
+        return deltaX + deltaY > 0
+    
+
+        
 ##############################################################################################################
 
 @dataclass(slots=True)
@@ -130,3 +165,14 @@ class CoordPair:
             return coords
         else:
             return None
+
+    def are_equal(self: CoordPair) -> bool:
+        return Coord.are_equal(self.src, self.dst)
+
+    def are_adjacent_cross(self: CoordPair) -> bool:
+        """Checks if the two coordinates are adjacent (excluding diagonals)"""
+        return Coord.are_adjacent_cross(self.src, self.dst)
+
+    def are_adjecent(self : CoordPair) -> bool:
+        """Checks if the two coordinates are adjacent (including diagonals)"""
+        return Coord.are_adjecent(self.src, self.dst)

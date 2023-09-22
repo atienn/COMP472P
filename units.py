@@ -8,6 +8,14 @@ from typing import Tuple, TypeVar, Type, Iterable, ClassVar
 
 from utils import Player
 
+class UnitAction(Enum):
+    """Actions that units can take during play."""
+    Invalid = 0 # default value should always be invalid
+    Move = 1
+    Attack = 2
+    Repair = 3
+    Kaboom = 4
+
 class UnitType(Enum):
     """Every unit type."""
     AI = 0
