@@ -47,16 +47,21 @@ def main():
     # create a new game
     game = Game(options=options)
 
+    args.file_output = True # Is this right? I saw nowhere else where the file_output would be enabled.
+
     if args.file_output:
         FileOutput.open_file("game_trace_[{}]_[{}]_[{}]".format(options.alpha_beta, options.max_time, options.max_turns))
 
         # the main game loop
+        log("Welcome to AI Wargame. Destroy the enemy AI to win!")
+        log("The current gamemode is set to Human VS Human.")
+        log(f"After {game.options.max_turns} turns, the Defender will win by default!")
         while True:
             log()
             log(game)
             winner = game.has_winner()
             if winner is not None:
-                log(f"{winner.name} wins!")
+                log(f"{winner.name} wins in {game.turns_played} turn(s)!")
                 break
 
             if game.options.game_type == GameType.AttackerVsDefender:

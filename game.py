@@ -419,7 +419,7 @@ class Game:
         dim = self.options.dim
         output = ""
         output += f"Next player: {self.next_player.name}\n"
-        output += f"Turns played: {self.turns_played}\n"
+        output += f"Turns played: {self.turns_played}/{self.options.max_turns}\n"
         coord = Coord()
         output += "\n   "
         for col in range(dim):
