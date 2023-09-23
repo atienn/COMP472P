@@ -21,7 +21,7 @@ def main():
     parser.add_argument('--max_time', type=float, help='maximum search time')
     parser.add_argument('--game_type', type=str, default="manual", help='game type: auto|attacker|defender|manual')
     parser.add_argument('--broker', type=str, help='play via a game broker')
-    parser.add_argument('--file_output', action='store_true', help='wether to enable output to file')
+    parser.add_argument('--no_file_output', action='store_true', help='wether to enable output to file')
     args = parser.parse_args()
 
     # parse the game type
@@ -47,39 +47,37 @@ def main():
     # create a new game
     game = Game(options=options)
 
-    args.file_output = True # Is this right? I saw nowhere else where the file_output would be enabled.
-
-    if args.file_output:
+    if not (args.no_file_output):
         FileOutput.open_file("game_trace_[{}]_[{}]_[{}]".format(options.alpha_beta, options.max_time, options.max_turns))
 
-        # the main game loop
-        log("Welcome to AI Wargame. Destroy the enemy AI to win!")
-        log("The current gamemode is set to Human VS Human.")
-        log(f"After {game.options.max_turns} turns, the Defender will win by default!")
-        while True:
-            log()
-            log(game)
-            winner = game.has_winner()
-            if winner is not None:
-                log(f"{winner.name} wins in {game.turns_played} turn(s)!")
-                break
+    # the main game loop
+    log("Welcome to AI Wargame. Destroy the enemy AI to win!")
+    log("The current gamemode is set to Human VS Human.")
+    log(f"After {game.options.max_turns} turns, the Defender will win by default!")
+    while True:
+        log()
+        log(game)
+        winner = game.has_winner()
+        if winner is not None:
+            log(f"{winner.name} wins in {game.turns_played} turn(s)!")
+            break
 
-            if game.options.game_type == GameType.AttackerVsDefender:
-                game.human_turn()
-            elif game.options.game_type == GameType.AttackerVsComp and game.next_player == Player.Attacker:
-                game.human_turn()
-            elif game.options.game_type == GameType.CompVsDefender and game.next_player == Player.Defender:
-                game.human_turn()
+        if game.options.game_type == GameType.AttackerVsDefender:
+            game.human_turn()
+        elif game.options.game_type == GameType.AttackerVsComp and game.next_player == Player.Attacker:
+            game.human_turn()
+        elif game.options.game_type == GameType.CompVsDefender and game.next_player == Player.Defender:
+            game.human_turn()
+        else:
+            player = game.next_player
+            move = game.computer_turn()
+            if move is not None:
+                game.post_move_to_broker(move)
             else:
-                player = game.next_player
-                move = game.computer_turn()
-                if move is not None:
-                    game.post_move_to_broker(move)
-                else:
-                    log("Computer doesn't know what to do!!!")
-                    exit(1)
-        
-        FileOutput.close()
+                log("Computer doesn't know what to do!!!")
+                exit(1)
+    
+    FileOutput.close()
 
 
 ##############################################################################################################
