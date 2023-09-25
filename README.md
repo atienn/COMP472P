@@ -2,6 +2,7 @@
 Team members: 
 - 40167163: Étienne Racine (leader) 
 - 40213265: Julien Robert
+
 This project is built from the skeleton code provided on the moodle course page.
 
 ### Program Usage
