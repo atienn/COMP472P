@@ -2,7 +2,7 @@ from __future__ import annotations
 import argparse
 
 from output import FileOutput, log
-from utils import Player
+from utils import PlayerTeam
 from game import GameType, Options, Game
 
 # maximum and minimum values for our heuristic scores (usually represents an end of game condition)
@@ -64,9 +64,9 @@ def main():
 
         if game.options.game_type == GameType.AttackerVsDefender:
             game.human_turn()
-        elif game.options.game_type == GameType.AttackerVsComp and game.next_player == Player.Attacker:
+        elif game.options.game_type == GameType.AttackerVsComp and game.next_player == PlayerTeam.Attacker:
             game.human_turn()
-        elif game.options.game_type == GameType.CompVsDefender and game.next_player == Player.Defender:
+        elif game.options.game_type == GameType.CompVsDefender and game.next_player == PlayerTeam.Defender:
             game.human_turn()
         else:
             player = game.next_player

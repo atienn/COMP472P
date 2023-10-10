@@ -9,9 +9,9 @@ import random
 import requests
 
 from output import log
-from utils import Coord, CoordPair, Player
+from utils import Coord, CoordPair, PlayerTeam
 from units import UnitAction, UnitType, Unit
-
+from ai_logic import Node
 
 
 class GameType(Enum):
@@ -36,7 +36,9 @@ class Options:
     randomize_moves : bool = True
     broker : str | None = None
 
+
 ##############################################################################################################
+
 
 @dataclass(slots=True)
 class Stats:
@@ -44,14 +46,16 @@ class Stats:
     evaluations_per_depth : dict[int,int] = field(default_factory=dict)
     total_seconds: float = 0.0
 
+
 ##############################################################################################################
+
 
 @dataclass(slots=True)
 class Game:
 
     """Representation of the game state."""
     board: list[list[Unit | None]] = field(default_factory=list)
-    next_player: Player = Player.Attacker
+    next_player: PlayerTeam = PlayerTeam.Attacker
     turns_played : int = 0
     options: Options = field(default_factory=Options)
     stats: Stats = field(default_factory=Stats)
@@ -65,18 +69,18 @@ class Game:
         dim = self.options.dim
         self.board = [[None for _ in range(dim)] for _ in range(dim)]
         md = dim-1
-        self.set(Coord(0,0),Unit(player=Player.Defender,type=UnitType.AI))
-        self.set(Coord(1,0),Unit(player=Player.Defender,type=UnitType.Tech))
-        self.set(Coord(0,1),Unit(player=Player.Defender,type=UnitType.Tech))
-        self.set(Coord(2,0),Unit(player=Player.Defender,type=UnitType.Firewall))
-        self.set(Coord(0,2),Unit(player=Player.Defender,type=UnitType.Firewall))
-        self.set(Coord(1,1),Unit(player=Player.Defender,type=UnitType.Program))
-        self.set(Coord(md,md),Unit(player=Player.Attacker,type=UnitType.AI))
-        self.set(Coord(md-1,md),Unit(player=Player.Attacker,type=UnitType.Virus))
-        self.set(Coord(md,md-1),Unit(player=Player.Attacker,type=UnitType.Virus))
-        self.set(Coord(md-2,md),Unit(player=Player.Attacker,type=UnitType.Program))
-        self.set(Coord(md,md-2),Unit(player=Player.Attacker,type=UnitType.Program))
-        self.set(Coord(md-1,md-1),Unit(player=Player.Attacker,type=UnitType.Firewall))
+        self.set(Coord(0,0),Unit(player=PlayerTeam.Defender,type=UnitType.AI))
+        self.set(Coord(1,0),Unit(player=PlayerTeam.Defender,type=UnitType.Tech))
+        self.set(Coord(0,1),Unit(player=PlayerTeam.Defender,type=UnitType.Tech))
+        self.set(Coord(2,0),Unit(player=PlayerTeam.Defender,type=UnitType.Firewall))
+        self.set(Coord(0,2),Unit(player=PlayerTeam.Defender,type=UnitType.Firewall))
+        self.set(Coord(1,1),Unit(player=PlayerTeam.Defender,type=UnitType.Program))
+        self.set(Coord(md,md),Unit(player=PlayerTeam.Attacker,type=UnitType.AI))
+        self.set(Coord(md-1,md),Unit(player=PlayerTeam.Attacker,type=UnitType.Virus))
+        self.set(Coord(md,md-1),Unit(player=PlayerTeam.Attacker,type=UnitType.Virus))
+        self.set(Coord(md-2,md),Unit(player=PlayerTeam.Attacker,type=UnitType.Program))
+        self.set(Coord(md,md-2),Unit(player=PlayerTeam.Attacker,type=UnitType.Program))
+        self.set(Coord(md-1,md-1),Unit(player=PlayerTeam.Attacker,type=UnitType.Firewall))
 
     def clone(self) -> Game:
         """Make a new copy of a game for minimax recursion.
@@ -87,11 +91,11 @@ class Game:
         new.board = copy.deepcopy(self.board)
         return new
 
-    def is_empty(self, coord : Coord) -> bool:
+    def is_cell_empty(self, coord : Coord) -> bool:
         """Check if contents of a board cell of the game at Coord is empty (must be valid coord)."""
         return self.board[coord.row][coord.col] is None
 
-    def is_valid_coord(self, coord: Coord) -> bool:
+    def is_coord_valid(self, coord: Coord) -> bool:
         """Check if a Coord is valid within out board dimensions."""
         dim = self.options.dim
         if coord.row < 0 or coord.row >= dim or coord.col < 0 or coord.col >= dim:
@@ -104,14 +108,14 @@ class Game:
 
     def get(self, coord : Coord) -> Unit | None:
         """Get contents of a board cell of the game at Coord."""
-        if self.is_valid_coord(coord):
+        if self.is_coord_valid(coord):
             return self.board[coord.row][coord.col]
         else:
             return None
 
     def set(self, coord : Coord, unit : Unit | None):
         """Set contents of a board cell of the game at Coord."""
-        if self.is_valid_coord(coord):
+        if self.is_coord_valid(coord):
             self.board[coord.row][coord.col] = unit
 
     def remove_dead(self, coord: Coord):
@@ -121,7 +125,7 @@ class Game:
         if unit.is_alive() == False:
             self.set(coord,None)
             if unit.type == UnitType.AI:
-                if unit.player == Player.Attacker:
+                if unit.player == PlayerTeam.Attacker:
                     self._attacker_has_ai = False
                 else:
                     self._defender_has_ai = False
@@ -146,11 +150,12 @@ class Game:
                 self.mod_health(exploding_tile, -2)
 
     # Swapped to using Enums instead of hard-coded string values simply because it's less likely to result
-    # in errors or unexpected behavior (reminder that things like "false" evaluates to boolean False in python)
+    # in errors or unexpected behavior (reminder that things like "false" evaluates to boolean False in
+    # python while other strings typically evaluate as True)
     def determine_action(self, coords : CoordPair) -> UnitAction:
         """Determines the action expressed by a CoordPair."""
         # Check that coordinates are valid.
-        if not self.is_valid_coord(coords.src) or not self.is_valid_coord(coords.dst):
+        if not self.is_coord_valid(coords.src) or not self.is_coord_valid(coords.dst):
             log("Specified coordinate does not exist!")
             return UnitAction.Invalid
         
@@ -176,10 +181,10 @@ class Game:
             if not actingUnit.can_move_freely():
                 # Check if the destination isn't closer to home base
                 deltaX, deltaY = coords.delta()
-                if actingUnit.player == Player.Defender and (deltaX < 0 or deltaY < 0):
+                if actingUnit.player == PlayerTeam.Defender and (deltaX < 0 or deltaY < 0):
                     log("Non-tech defender unit cannot move towards its base.")
                     return UnitAction.Invalid
-                elif actingUnit.player == Player.Attacker and (deltaX > 0 or deltaY > 0):
+                elif actingUnit.player == PlayerTeam.Attacker and (deltaX > 0 or deltaY > 0):
                     log("Non-virus attacker unit cannot move towards its base.")
                     return UnitAction.Invalid                  
 
@@ -245,16 +250,16 @@ class Game:
         """Check if the game is over."""
         return self.has_winner() is not None
 
-    def has_winner(self) -> Player | None:
+    def has_winner(self) -> PlayerTeam | None:
         """Check if the game is over and returns winner"""
         if self.options.max_turns is not None and self.turns_played >= self.options.max_turns:
-            return Player.Defender
+            return PlayerTeam.Defender
         if self._attacker_has_ai:
             if self._defender_has_ai:
                 return None
             else:
-                return Player.Attacker    
-        return Player.Defender
+                return PlayerTeam.Attacker    
+        return PlayerTeam.Defender
 
     #endregion
 
@@ -265,7 +270,7 @@ class Game:
         while True:
             s = input(F'Player {self.next_player.name}, enter your move: ')
             coords = CoordPair.from_string(s)
-            if coords is not None and self.is_valid_coord(coords.src) and self.is_valid_coord(coords.dst):
+            if coords is not None and self.is_coord_valid(coords.src) and self.is_coord_valid(coords.dst):
                 return coords
             else:
                 log('Invalid coordinates! Try again.')
@@ -312,7 +317,7 @@ class Game:
             self.next_turn()
         return mv
 
-    def player_units(self, player: Player) -> Iterable[Tuple[Coord,Unit]]:
+    def player_units(self, player: PlayerTeam) -> Iterable[Tuple[Coord,Unit]]:
         """Iterates over all units belonging to a player."""
         for coord in CoordPair.from_dim(self.options.dim).iter_rectangle():
             unit = self.get(coord)
@@ -321,15 +326,41 @@ class Game:
 
     def move_candidates(self) -> Iterable[CoordPair]:
         """Generate valid move candidates for the next player."""
+        # we clone the coordpairs as not to have units getting moved by accident
         move = CoordPair()
         for (src,_) in self.player_units(self.next_player):
             move.src = src
+
+            # Check if moving to each adjacent unit is a valid move.
             for dst in src.iter_adjacent():
                 move.dst = dst
+                # if the move is valid return it
                 if self.determine_action(move) != UnitAction.Invalid:
                     yield move.clone()
+
+            # The same coordinate twice (self-destrtuct) 
+            # is always a valid move, no need to check.
             move.dst = src
             yield move.clone()
+    
+    def next_state_candidates(self) -> Iterable[Game]:
+        other_player = PlayerTeam.next(self.next_player)
+        for move in self.move_candidates():
+            state = self.clone()
+            state.next_player = other_player
+            state.perform_move(move) # redundancy, perform_move() checks if the move is valid, which is something we already know is true from move_candidates()
+            yield state
+
+
+    def search_for_best_move(self) -> CoordPair: 
+        root = Node(self.clone())
+        Node.generate_node_tree(root, self.options.max_depth)
+
+        # runs alpha-beta or minimax depending on whichever is set active
+        best_move = Node.run_alphabeta(root) if self.options.alpha_beta else Node.run_minimax(root)
+        
+        # TODO: return the coordpair that represents enacting the best move found
+
 
     def random_move(self) -> Tuple[int, CoordPair | None, float]:
         """Returns a random move."""
@@ -343,19 +374,24 @@ class Game:
     def suggest_move(self) -> CoordPair | None:
         """Suggest the next move using minimax alpha beta. TODO: REPLACE RANDOM_MOVE WITH PROPER GAME LOGIC!!!"""
         start_time = datetime.now()
-        (score, move, avg_depth) = self.random_move()
+        
+        (score, move, avg_depth) = self.random_move() # replace this
+
         elapsed_seconds = (datetime.now() - start_time).total_seconds()
         self.stats.total_seconds += elapsed_seconds
         log(f"Heuristic score: {score}")
         log(f"Average recursive depth: {avg_depth:0.1f}")
         log(f"Evals per depth: ",end='')
+        
         for k in sorted(self.stats.evaluations_per_depth.keys()):
-            log(f"{k}:{self.stats.evaluations_per_depth[k]} ",end='')
+            log(f"{k}:{self.stats.evaluations_per_depth[k]} ", end='')
         log()
+        
         total_evals = sum(self.stats.evaluations_per_depth.values())
         if self.stats.total_seconds > 0:
             log(f"Eval perf.: {total_evals/self.stats.total_seconds/1000:0.1f}k/s")
         log(f"Elapsed time: {elapsed_seconds:0.1f}s")
+        
         return move
 
     #endregion

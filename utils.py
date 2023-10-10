@@ -4,20 +4,20 @@ from enum import Enum
 from dataclasses import dataclass, field
 from typing import Tuple, Iterable
 
-class Player(Enum):
-    """The 2 players."""
+class PlayerTeam(Enum):
+    """The 2 players teams."""
     Attacker = 0
     Defender = 1
 
     is_bot : bool
 
-    def next(self) -> Player:
+    def next(self) -> PlayerTeam:
         """The next (other) player."""
-        if self is Player.Attacker:
-            return Player.Defender
+        if self is PlayerTeam.Attacker:
+            return PlayerTeam.Defender
         else:
-            return Player.Attacker
-            
+            return PlayerTeam.Attacker
+
 
 ##############################################################################################################
 

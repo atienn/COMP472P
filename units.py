@@ -3,7 +3,7 @@ from enum import Enum
 from dataclasses import dataclass
 from typing import ClassVar
 
-from utils import Player
+from utils import PlayerTeam
 
 class UnitAction(Enum):
     """Actions that units can take during play."""
@@ -26,7 +26,7 @@ class UnitType(Enum):
 
 @dataclass(slots=True)
 class Unit:
-    player: Player = Player.Attacker
+    player: PlayerTeam = PlayerTeam.Attacker
     type: UnitType = UnitType.Program
     health : int = 9
     # class variable: damage table for units (based on the unit type constants in order)

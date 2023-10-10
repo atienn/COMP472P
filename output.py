@@ -42,6 +42,7 @@ class FileOutput:
             return # If there is no file logging enabled, do nothing else.
         if cls.output_file == None or cls.output_file.closed:
             print("Target output file is missing or closed. Open a file before logging.")
+            cls.file_writing_enabled = False
             return
 
         cls.output_file.write(str)
@@ -52,6 +53,7 @@ class FileOutput:
             return
         cls.output_file.close()
         cls.file_writing_enabled = False
+
 
 # Public method that can be called by anyone
 def log(to_log = "", end = '\n'):
