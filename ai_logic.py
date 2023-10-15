@@ -8,7 +8,14 @@ import game
 # For our minimax/alpha-beta heuristics, MAX is the Defender and MIN is the attacker.
 
 def sample_heuristic(state: "game.Game") -> int:
-    return 0
+    # Cheap test heuristic, we'll get more creative later, just grabs all the hp from the current player and tries to avoid damage
+    total_hp = 0
+    for (coord,unit) in state.player_units(state.next_player): 
+        total_hp += unit.health
+    return total_hp
+    # Problem: The Defender keeps killing itself as bot and every state is given 54 heuristic.
+    # Looking through the debugger, the "state" inside this function is always the same - one where the defender hasn't moved at all.
+    # Why is that? I thought the states getting passed here were the modified candidates.
 
 
 class Node:

@@ -231,8 +231,10 @@ class Game:
 
     def perform_move(self, coords : CoordPair) -> Tuple[bool,str]:
         """Validate and perform an action expressed by a CoordPair."""
-        action = self.determine_action(coords)
-
+        if coords.action_type != False:
+            action = coords.action_type
+        else:
+            action = self.determine_action(coords)
         if action == UnitAction.Move:
             self.set(coords.dst,self.get(coords.src))
             self.set(coords.src,None)
@@ -360,14 +362,13 @@ class Game:
                 # if the move is valid return it
                 action_type = self.determine_action(move)
                 if self.is_of_valid_action_type(action_type):
+                    move.action_type = action_type
                     yield move.clone()
-                elif self.next_player_is_human():
-                    self.log_invalid_move(action_type)
+                #elif self.next_player_is_human():
+                #    self.log_invalid_move(action_type)
 
             # The same coordinate twice (self-destrtuct) 
             # is always a valid move, no need to check.
-            move.dst = src
-            yield move.clone()
     
     def next_state_candidates(self) -> Iterable[Tuple[Game, CoordPair]]:
         other_player = PlayerTeam.next(self.next_player)
