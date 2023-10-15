@@ -20,7 +20,6 @@ class GameType(Enum):
     CompVsDefender = 2
     CompVsComp = 3
 
-
 ##############################################################################################################
 
 @dataclass(slots=True)
@@ -30,7 +29,7 @@ class Options:
     max_depth : int | None = 4
     min_depth : int | None = 2
     max_time : float | None = 5.0
-    game_type : GameType = GameType.AttackerVsDefender
+    game_type : GameType = GameType.AttackerVsComp
     alpha_beta : bool = True
     max_turns : int | None = 100
     randomize_moves : bool = True
@@ -61,6 +60,19 @@ class Game:
     stats: Stats = field(default_factory=Stats)
     _attacker_has_ai : bool = True
     _defender_has_ai : bool = True
+
+    #region WELCOME
+
+    def gamemode_name_string(self, type) -> str:
+        game_names = {
+            GameType.AttackerVsDefender : "Human (A) vs. Human (D)",
+            GameType.AttackerVsComp : "Human (A) vs. Computer (D)",
+            GameType.CompVsDefender : "Computer (A) vs. Human (D)",
+            GameType.CompVsComp : "Computer (A) vs. Computer (D)",
+        }
+        return game_names[type]
+
+    #endregion
 
     #region BOARD
 

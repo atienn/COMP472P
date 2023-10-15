@@ -34,6 +34,8 @@ def main():
     else:
         game_type = GameType.CompVsComp
 
+    # game_type = GameType.AttackerVsComp # Force the gametype, remove later
+
     # set up game options
     options = Options(game_type=game_type)
 
@@ -52,7 +54,7 @@ def main():
 
     # the main game loop
     log("Welcome to AI Wargame. Destroy the enemy AI to win!")
-    log("The current gamemode is set to Human VS Human.")
+    log(f"The current gamemode is set to {game.gamemode_name_string(game_type)}.")
     log(f"After {game.options.max_turns} turns, the Defender will win by default!")
     while True:
         log()
@@ -61,7 +63,6 @@ def main():
         if winner is not None:
             log(f"{winner.name} wins in {game.turns_played} turn(s)!")
             break
-
         if game.options.game_type == GameType.AttackerVsDefender:
             game.human_turn()
         elif game.options.game_type == GameType.AttackerVsComp and game.next_player == PlayerTeam.Attacker:
