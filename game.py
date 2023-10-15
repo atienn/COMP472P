@@ -369,6 +369,9 @@ class Game:
 
             # The same coordinate twice (self-destrtuct) 
             # is always a valid move, no need to check.
+            # move.dst = src
+            # yield move.clone()
+            # Julien: I didn't really understand that. It just kept causing bugs by changing coords like (33,23) to (23,23) and causing bugs. 
     
     def next_state_candidates(self) -> Iterable[Tuple[Game, CoordPair]]:
         other_player = PlayerTeam.next(self.next_player)
