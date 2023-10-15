@@ -7,7 +7,14 @@ from utils import PlayerTeam
 
 class UnitAction(Enum):
     """Actions that units can take during play."""
-    Invalid = 0 # default value should always be invalid
+    InvalidNoExist = 0 # default value should always be invalid
+    InvalidNoUnderstand = 5
+    InvalidNoDiagonal = 6
+    InvalidNoOwn = 7
+    InvalidNoReturnVirus = 8
+    InvalidNoReturnTech = 9
+    InvalidNoDisengage = 10
+    InvalidNoUnit = 11
     Move = 1
     Attack = 2
     Repair = 3

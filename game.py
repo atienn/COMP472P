@@ -71,6 +71,25 @@ class Game:
             GameType.CompVsComp : "Computer (A) vs. Computer (D)",
         }
         return game_names[type]
+    
+    def log_invalid_move(self,type):
+        error_type = {
+            UnitAction.InvalidNoExist : "Specified coordinate does not exist!",
+            UnitAction.InvalidNoDiagonal : "Units can only move in cardinal directions!",
+            UnitAction.InvalidNoOwn : "Unit does not belong to this player!",
+            UnitAction.InvalidNoReturnTech : "Non-tech defender unit cannot move towards its base.",
+            UnitAction.InvalidNoDisengage : "Unit cannot move; it is engaged with another unit.",
+            UnitAction.InvalidNoReturnVirus : "Non-virus defender unit cannot move towards its base.",
+            UnitAction.InvalidNoUnderstand : "Action was not recognized.",
+            UnitAction.InvalidNoUnit : "Coordinate does not contain a unit!",
+        }
+        log(error_type[type])
+
+    def is_of_valid_action_type(self, type) -> bool:
+        return type == UnitAction.Move or type == UnitAction.Repair or type == UnitAction.Kaboom or type == UnitAction.Attack
+
+    def next_player_is_human(self) -> bool:
+        return self.options.game_type == GameType.AttackerVsDefender or (self.options.game_type == GameType.AttackerVsComp and self.next_player == PlayerTeam.Attacker) or (self.options.game_type == GameType.CompVsDefender and self.next_player == PlayerTeam.Defender)
 
     #endregion
 
@@ -168,22 +187,18 @@ class Game:
         """Determines the action expressed by a CoordPair."""
         # Check that coordinates are valid.
         if not self.is_coord_valid(coords.src) or not self.is_coord_valid(coords.dst):
-            log("Specified coordinate does not exist!")
-            return UnitAction.Invalid
+            return UnitAction.InvalidNoExist
         
         # The unit that will do something this turn.
         actingUnit = self.get(coords.src) 
         if actingUnit is None:
-            log("Coordinate does not contain a unit!")
-            return UnitAction.Invalid
+            return UnitAction.InvalidNoUnit
         if actingUnit.player != self.next_player:
-            log("Unit does not belong to this player!")
-            return UnitAction.Invalid
+            return UnitAction.InvalidNoOwn
         if coords.are_equal():
             return UnitAction.Kaboom
         if not coords.are_adjacent_cross():
-            log("Units can only move in cardinal directions!")
-            return UnitAction.Invalid
+            return UnitAction.InvalidNoDiagonal
         
         # The unit (if any) that will be acted upon (attacked/repaired).
         otherUnit = self.get(coords.dst)
@@ -194,18 +209,15 @@ class Game:
                 # Check if the destination isn't closer to home base
                 deltaX, deltaY = coords.delta()
                 if actingUnit.player == PlayerTeam.Defender and (deltaX < 0 or deltaY < 0):
-                    log("Non-tech defender unit cannot move towards its base.")
-                    return UnitAction.Invalid
+                    return UnitAction.InvalidNoReturnTech
                 elif actingUnit.player == PlayerTeam.Attacker and (deltaX > 0 or deltaY > 0):
-                    log("Non-virus attacker unit cannot move towards its base.")
-                    return UnitAction.Invalid                  
+                    return UnitAction.InvalidNoReturnVirus 
 
                 # Check if the unit isn't "engaged" with enemy unit
                 for adjacentTile in coords.src.iter_adjacent():
                     adjacentUnit = self.get(adjacentTile)
                     if adjacentUnit is not None and actingUnit.player != adjacentUnit.player:
-                        log("Unit cannot move; it is engaged with unit at: " + adjacentTile.to_string())
-                        return UnitAction.Invalid
+                        return UnitAction.InvalidNoDisengage
 
             return UnitAction.Move # With guard condition above, unit can only move one space.
         
@@ -215,8 +227,7 @@ class Game:
             return UnitAction.Repair
         
         # default case
-        log("Action was not recognized.")
-        return UnitAction.Invalid
+        return UnitAction.InvalidNoUnderstand
 
     def perform_move(self, coords : CoordPair) -> Tuple[bool,str]:
         """Validate and perform an action expressed by a CoordPair."""
@@ -347,8 +358,11 @@ class Game:
             for dst in src.iter_adjacent():
                 move.dst = dst
                 # if the move is valid return it
-                if self.determine_action(move) != UnitAction.Invalid:
+                action_type = self.determine_action(move)
+                if self.is_of_valid_action_type(action_type):
                     yield move.clone()
+                elif self.next_player_is_human():
+                    self.log_invalid_move(action_type)
 
             # The same coordinate twice (self-destrtuct) 
             # is always a valid move, no need to check.
