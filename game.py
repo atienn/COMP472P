@@ -343,23 +343,29 @@ class Game:
             move.dst = src
             yield move.clone()
     
-    def next_state_candidates(self) -> Iterable[Game]:
+    def next_state_candidates(self) -> Iterable[Tuple[Game, CoordPair]]:
         other_player = PlayerTeam.next(self.next_player)
         for move in self.move_candidates():
             state = self.clone()
             state.next_player = other_player
-            state.perform_move(move) # redundancy, perform_move() checks if the move is valid, which is something we already know is true from move_candidates()
-            yield state
+            state.perform_move(move) # TODO: redundancy, perform_move() checks if the move is valid, which is something we already know is true from move_candidates()
+            yield (state, move)
 
 
-    def search_for_best_move(self) -> CoordPair: 
-        root = Node(self.clone())
+    def search_for_best_move(self) -> Tuple[int, CoordPair | None, float ]: 
+        # clone the game state, store it into a node
+        root = Node(self.clone()) 
+        # generate the node tree under the node representing the current game state
         Node.generate_node_tree(root, self.options.max_depth)
 
-        # runs alpha-beta or minimax depending on whichever is set active
-        best_move = Node.run_alphabeta(root) if self.options.alpha_beta else Node.run_minimax(root)
+        # runs alpha-beta or minimax on the tree (depending on whichever is set active)
+        is_maximizing = self.next_player.value == PlayerTeam.Defender # defender is MAX
+        best_move = Node.run_minimax(root, is_maximizing) # delete this line and uncomment the next once run_alpha_beta() is implemented.
+        # best_move = Node.run_alphabeta(root, is_maximizing) if self.options.alpha_beta else Node.run_minimax(root, is_maximizing)
         
-        # TODO: return the coordpair that represents enacting the best move found
+        # return the coordpair that represents enacting the best move found
+        # TODO: retrieve and return the third tuple argument, which represents the average depth searched
+        return (best_move.value, best_move.action, 0)
 
 
     def random_move(self) -> Tuple[int, CoordPair | None, float]:
@@ -375,7 +381,7 @@ class Game:
         """Suggest the next move using minimax alpha beta. TODO: REPLACE RANDOM_MOVE WITH PROPER GAME LOGIC!!!"""
         start_time = datetime.now()
         
-        (score, move, avg_depth) = self.random_move() # replace this
+        (score, move, avg_depth) = self.search_for_best_move()
 
         elapsed_seconds = (datetime.now() - start_time).total_seconds()
         self.stats.total_seconds += elapsed_seconds

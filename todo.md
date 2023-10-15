@@ -13,4 +13,7 @@ Thing that we need to do for the project. Expand as needed.
 - [x] (optional) Sperate code into multiple files (e.g. "game.py", "input-output.py", "bot.py", etc) for the sake of code organization.
 
 ### D2
+- [] Restructure `determine_action()` so that it doesn't log directly if a move is invalid or not (see `move_candidates()`).
+- [] Restructure the way moves get enacted as not to have duplicate move validity verification in computer decision-making (see `next_state_candidates()`, will likely be within `perform_move()` method) 
+- 
 ### D3
