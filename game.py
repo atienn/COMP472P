@@ -361,8 +361,8 @@ class Game:
                 move.dst = dst
                 # if the move is valid return it
                 action_type = self.determine_action(move)
+                move.action_type = action_type
                 if self.is_of_valid_action_type(action_type):
-                    move.action_type = action_type
                     yield move.clone()
                 #elif self.next_player_is_human():
                 #    self.log_invalid_move(action_type)
