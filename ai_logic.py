@@ -1,21 +1,23 @@
 from typing import Iterable
-from utils import CoordPair
+from utils import CoordPair, PlayerTeam
 import math
 # Python doesn't have a way to have clean way to deal with circular references. As a result,
 # we need to import the whole "game" module here and change type hints for the Game class into "game.Game".
 import game
 
 # For our minimax/alpha-beta heuristics, MAX is the Defender and MIN is the attacker.
-
+# Cheap test heuristic, we'll get more creative later, just grabs all the hp from the current player and tries to avoid damage
 def sample_heuristic(state: "game.Game") -> int:
-    # Cheap test heuristic, we'll get more creative later, just grabs all the hp from the current player and tries to avoid damage
     total_hp = 0
-    for (coord,unit) in state.player_units(state.next_player): 
+
+    # Tally how advantageous the state is for Defender.
+    for (coord,unit) in state.player_units(PlayerTeam.Defender):
         total_hp += unit.health
+    
+    # There is currently a bug with how the heuristic evaluation. 
+    # For it to work as expected when AI is defender the score must be negated (return -total_hp).
+    # For it to work as expected when AI is attacker the score needs to be left as-is (return total_hp).
     return total_hp
-    # Problem: The Defender keeps killing itself as bot and every state is given 54 heuristic.
-    # Looking through the debugger, the "state" inside this function is always the same - one where the defender hasn't moved at all.
-    # Why is that? I thought the states getting passed here were the modified candidates.
 
 
 class Node:

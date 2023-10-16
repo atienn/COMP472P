@@ -29,7 +29,7 @@ class Options:
     max_depth : int | None = 4
     min_depth : int | None = 2
     max_time : float | None = 5.0
-    game_type : GameType = GameType.AttackerVsComp
+    game_type : GameType = GameType.AttackerVsDefender
     alpha_beta : bool = True
     max_turns : int | None = 100
     randomize_moves : bool = True
@@ -71,22 +71,6 @@ class Game:
             GameType.CompVsComp : "Computer (A) vs. Computer (D)",
         }
         return game_names[type]
-    
-    def log_invalid_move(self,type):
-        error_type = {
-            UnitAction.InvalidNoExist : "Specified coordinate does not exist!",
-            UnitAction.InvalidNoDiagonal : "Units can only move in cardinal directions!",
-            UnitAction.InvalidNoOwn : "Unit does not belong to this player!",
-            UnitAction.InvalidNoReturnTech : "Non-tech defender unit cannot move towards its base.",
-            UnitAction.InvalidNoDisengage : "Unit cannot move; it is engaged with another unit.",
-            UnitAction.InvalidNoReturnVirus : "Non-virus defender unit cannot move towards its base.",
-            UnitAction.InvalidNoUnderstand : "Action was not recognized.",
-            UnitAction.InvalidNoUnit : "Coordinate does not contain a unit!",
-        }
-        log(error_type[type])
-
-    def is_of_valid_action_type(self, type) -> bool:
-        return type == UnitAction.Move or type == UnitAction.Repair or type == UnitAction.Kaboom or type == UnitAction.Attack
 
     def next_player_is_human(self) -> bool:
         return self.options.game_type == GameType.AttackerVsDefender or (self.options.game_type == GameType.AttackerVsComp and self.next_player == PlayerTeam.Attacker) or (self.options.game_type == GameType.CompVsDefender and self.next_player == PlayerTeam.Defender)
@@ -127,7 +111,7 @@ class Game:
         return self.board[coord.row][coord.col] is None
 
     def is_coord_valid(self, coord: Coord) -> bool:
-        """Check if a Coord is valid within out board dimensions."""
+        """Check if a Coord is valid within the board dimensions."""
         dim = self.options.dim
         if coord.row < 0 or coord.row >= dim or coord.col < 0 or coord.col >= dim:
             return False
@@ -180,25 +164,26 @@ class Game:
                 exploding_tile = Coord(blast_point.row-1+x,blast_point.col-1+y)
                 self.mod_health(exploding_tile, -2)
 
+
     # Swapped to using Enums instead of hard-coded string values simply because it's less likely to result
     # in errors or unexpected behavior (reminder that things like "false" evaluates to boolean False in
     # python while other strings typically evaluate as True)
-    def determine_action(self, coords : CoordPair) -> UnitAction:
+    def determine_action(self, coords : CoordPair) -> Tuple[UnitAction, str]:
         """Determines the action expressed by a CoordPair."""
         # Check that coordinates are valid.
         if not self.is_coord_valid(coords.src) or not self.is_coord_valid(coords.dst):
-            return UnitAction.InvalidNoExist
+            return (UnitAction.Invalid, "Specified coordinate does not exist!")
         
         # The unit that will do something this turn.
         actingUnit = self.get(coords.src) 
         if actingUnit is None:
-            return UnitAction.InvalidNoUnit
+            return (UnitAction.Invalid, "Coordinate does not contain a unit!")
         if actingUnit.player != self.next_player:
-            return UnitAction.InvalidNoOwn
+            return (UnitAction.Invalid, "Unit does not belong to this player!")
         if coords.are_equal():
-            return UnitAction.Kaboom
+            return (UnitAction.Kaboom, "Detonate")
         if not coords.are_adjacent_cross():
-            return UnitAction.InvalidNoDiagonal
+            return (UnitAction.Invalid, "Units can only move in cardinal directions!")
         
         # The unit (if any) that will be acted upon (attacked/repaired).
         otherUnit = self.get(coords.dst)
@@ -209,43 +194,45 @@ class Game:
                 # Check if the destination isn't closer to home base
                 deltaX, deltaY = coords.delta()
                 if actingUnit.player == PlayerTeam.Defender and (deltaX < 0 or deltaY < 0):
-                    return UnitAction.InvalidNoReturnTech
+                    return (UnitAction.Invalid, "Non-tech defender unit cannot move towards its base.")
                 elif actingUnit.player == PlayerTeam.Attacker and (deltaX > 0 or deltaY > 0):
-                    return UnitAction.InvalidNoReturnVirus 
+                    return (UnitAction.Invalid, "Non-virus attacker unit cannot move towards its base.")
 
                 # Check if the unit isn't "engaged" with enemy unit
                 for adjacentTile in coords.src.iter_adjacent():
                     adjacentUnit = self.get(adjacentTile)
                     if adjacentUnit is not None and actingUnit.player != adjacentUnit.player:
-                        return UnitAction.InvalidNoDisengage
+                        return (UnitAction.Invalid, "Unit cannot move; it is engaged with another unit.")
 
-            return UnitAction.Move # With guard condition above, unit can only move one space.
+            return (UnitAction.Move, "Move") # With guard condition above, unit can only move one space.
         
         if otherUnit.player != self.next_player:
-            return UnitAction.Attack
+            return (UnitAction.Attack, "Attack")
         if otherUnit.player == self.next_player and Unit.repair_amount(actingUnit, otherUnit) > 0:
-            return UnitAction.Repair
+            return (UnitAction.Repair, "Repair")
         
         # default case
-        return UnitAction.InvalidNoUnderstand
+        return (UnitAction.Invalid, "Action was not recognized.")
 
-    def perform_move(self, coords : CoordPair) -> Tuple[bool,str]:
-        """Validate and perform an action expressed by a CoordPair."""
-        if coords.action_type != False:
-            action = coords.action_type
-        else:
-            action = self.determine_action(coords)
+    def attempt_move(self, coords: CoordPair):
+        action, descriptor = self.determine_action(coords)
+        log(descriptor)
+        return self.perform_move(coords, action)
+
+    def perform_move(self, coords: CoordPair, action: UnitAction) -> Tuple[bool,str]:
+        """Performs an action expressed by a CoordPair."""
+        actingUnit = self.get(coords.src)
+
         if action == UnitAction.Move:
-            self.set(coords.dst,self.get(coords.src))
-            self.set(coords.src,None)
-            return (True,f"{self.next_player.name}'s {self.get(coords.dst).unit_name_string()} moves from {coords.src.to_string()} to {coords.dst.to_string()}.")
+            self.set(coords.dst, actingUnit)
+            self.set(coords.src, None)
+            return (True, f"{self.next_player.name}'s {actingUnit.unit_name_string()} moves from {coords.src.to_string()} to {coords.dst.to_string()}.")
         if action == UnitAction.Kaboom:
             exploder = self.get(coords.dst)
             self.destroy(coords.dst)
             self.explode(coords.dst)
-            return (True,f"{self.next_player.name}'s {exploder.unit_name_string()} at {coords.dst.to_string()} explodes in a fiery blast!! (2 damage to all nearby units)")
+            return (True, f"{self.next_player.name}'s {exploder.unit_name_string()} at {coords.dst.to_string()} explodes in a fiery blast!! (2 damage to all nearby units)")
 
-        actingUnit = self.get(coords.src)
         otherUnit = self.get(coords.dst)
 
         if action == UnitAction.Attack:
@@ -253,13 +240,13 @@ class Game:
             # but do damage the calculation both ways just in case
             self.mod_health(coords.dst, -actingUnit.damage_amount(otherUnit))
             self.mod_health(coords.src, -otherUnit.damage_amount(actingUnit))
-            return (True,f"{self.next_player.name}'s {self.get(coords.src).unit_name_string()} at {coords.src.to_string()} attacks the {self.get(coords.dst).unit_name_string()} at {coords.dst.to_string()}! ({actingUnit.damage_amount(otherUnit)} damage dealt, {otherUnit.damage_amount(actingUnit)} damage taken as retaliation)")
+            return (True,f"{self.next_player.name}'s {actingUnit.unit_name_string()} at {coords.src.to_string()} attacks the {otherUnit.unit_name_string()} at {coords.dst.to_string()}! ({actingUnit.damage_amount(otherUnit)} damage dealt, {otherUnit.damage_amount(actingUnit)} damage taken as retaliation)")
         if action == UnitAction.Repair:
             health_value = actingUnit.repair_amount(otherUnit)
             otherUnit.mod_health(health_value)
-            return (True,f"{self.next_player.name}'s {self.get(coords.src).unit_name_string()} at {coords.src.to_string()} repairs their {self.get(coords.dst).unit_name_string()} ally at {coords.dst.to_string()}! ({health_value} damage repaired)")
+            return (True,f"{self.next_player.name}'s {actingUnit.unit_name_string()} at {coords.src.to_string()} repairs their {otherUnit.unit_name_string()} ally at {coords.dst.to_string()}! ({health_value} damage repaired)")
 
-        return (False,"invalid move")
+        return (False, "invalid move")
 
     #endregion
 
@@ -307,7 +294,7 @@ class Game:
             while True:
                 mv = self.get_move_from_broker()
                 if mv is not None:
-                    (success,result) = self.perform_move(mv)
+                    (success,result) = self.attempt_move(mv)
                     log(f"Broker {self.next_player.name}: ",end='')
                     log(result)
                     if success:
@@ -317,7 +304,7 @@ class Game:
         else:
             while True:
                 mv = self.read_move()
-                (success,result) = self.perform_move(mv)
+                (success,result) = self.attempt_move(mv)
                 if success:
                     log(f"Player {self.next_player.name}: ",end='')
                     log(result)
@@ -325,6 +312,7 @@ class Game:
                     self.is_finished()
                     break
                 else:
+                    log(result)
                     log("The move is not valid! Try again.")
 
     #endregion
@@ -335,11 +323,14 @@ class Game:
         """Computer plays a move."""
         mv = self.suggest_move()
         if mv is None: return None
-        (success,result) = self.perform_move(mv)
+        (success, result) = self.attempt_move(mv)
         if success:
             log(f"Computer {self.next_player.name}: ",end='')
             log(result)
             self.next_turn()
+        else:
+            log("ERROR: AI suggesting invalid move!")
+            log(result)
         return mv
 
     def player_units(self, player: PlayerTeam) -> Iterable[Tuple[Coord,Unit]]:
@@ -349,7 +340,7 @@ class Game:
             if unit is not None and unit.player == player:
                 yield (coord,unit)
 
-    def move_candidates(self) -> Iterable[CoordPair]:
+    def move_candidates(self) -> Iterable[Tuple[CoordPair, UnitAction]]:
         """Generate valid move candidates for the next player."""
         # we clone the coordpairs as not to have units getting moved by accident
         move = CoordPair()
@@ -360,25 +351,25 @@ class Game:
             for dst in src.iter_adjacent():
                 move.dst = dst
                 # if the move is valid return it
-                action_type = self.determine_action(move)
-                move.action_type = action_type
-                if self.is_of_valid_action_type(action_type):
-                    yield move.clone()
-                #elif self.next_player_is_human():
-                #    self.log_invalid_move(action_type)
+                action, _ = self.determine_action(move)
+                if action != UnitAction.Invalid:
+                    yield (move.clone(), action)
 
-            # The same coordinate twice (self-destrtuct) 
-            # is always a valid move, no need to check.
-            # move.dst = src
-            # yield move.clone()
+            # Lastly, check self-destruct (same source and destination coords)
+            # Should always a valid move, check is there just in case.
+            move.dst = src
+            action, _ = self.determine_action(move)
+            if action != UnitAction.Invalid:
+                yield (move.clone(), action)
+            
             # Julien: I didn't really understand that. It just kept causing bugs by changing coords like (33,23) to (23,23) and causing bugs. 
     
     def next_state_candidates(self) -> Iterable[Tuple[Game, CoordPair]]:
         other_player = PlayerTeam.next(self.next_player)
-        for move in self.move_candidates():
+        for move, action in self.move_candidates():
             state = self.clone()
             state.next_player = other_player
-            state.perform_move(move) # TODO: redundancy, perform_move() checks if the move is valid, which is something we already know is true from move_candidates()
+            state.perform_move(move, action) # unpack tuple into CoordPair and UnitAction
             yield (state, move)
 
 
@@ -395,6 +386,8 @@ class Game:
         
         # return the coordpair that represents enacting the best move found
         # TODO: retrieve and return the third tuple argument, which represents the average depth searched
+        print("best_move" + best_move.__str__())
+        print("best.move.action" + best_move.action.__str__())
         return (best_move.value, best_move.action, 0)
 
 
@@ -408,10 +401,10 @@ class Game:
             return (0, None, 0)
 
     def suggest_move(self) -> CoordPair | None:
-        """Suggest the next move using minimax alpha beta. TODO: REPLACE RANDOM_MOVE WITH PROPER GAME LOGIC!!!"""
+        """Suggest the next move using minimax alpha beta."""
         start_time = datetime.now()
         
-        (score, move, avg_depth) = self.search_for_best_move()
+        score, move, avg_depth = self.search_for_best_move()
 
         elapsed_seconds = (datetime.now() - start_time).total_seconds()
         self.stats.total_seconds += elapsed_seconds

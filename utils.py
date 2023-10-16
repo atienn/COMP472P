@@ -121,7 +121,6 @@ class CoordPair:
     """Representation of a game move or a rectangular area via 2 Coords."""
     src : Coord = field(default_factory=Coord)
     dst : Coord = field(default_factory=Coord)
-    action_type : bool = False # It's classed as a bool but is not always a bool. I am so sorry
 
     def to_string(self) -> str:
         """Text representation of a CoordPair."""
