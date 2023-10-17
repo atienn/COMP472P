@@ -1,22 +1,46 @@
 from typing import Iterable
 from utils import CoordPair, PlayerTeam
+from units import UnitType
 import math
 # Python doesn't have a way to have clean way to deal with circular references. As a result,
 # we need to import the whole "game" module here and change type hints for the Game class into "game.Game".
 import game
 
 # For our minimax/alpha-beta heuristics, MAX is the Defender and MIN is the attacker.
-# Cheap test heuristic, we'll get more creative later, just grabs all the hp from the current player and tries to avoid damage
 def sample_heuristic(state: "game.Game") -> int:
     total_hp = 0
 
-    # Tally how advantageous the state is for Defender.
-    for (coord,unit) in state.player_units(PlayerTeam.Defender):
-        total_hp += unit.health
     
-    # There is currently a bug with how the heuristic evaluation. 
-    # For it to work as expected when AI is defender the score must be negated (return -total_hp).
-    # For it to work as expected when AI is attacker the score needs to be left as-is (return total_hp).
+    if state.next_player == PlayerTeam.Attacker: # Tally how advantageous the state is for Attacker.
+        enemy_ai_coord = None
+        for (coord,unit) in state.player_units(PlayerTeam.Defender):
+            if unit.type == UnitType.AI:
+                total_hp += unit.health*10 # That enemy AI MUST die!
+                enemy_ai_coord = coord
+            else:
+                total_hp += unit.health # But your enemy in general being alive is bad.
+        if enemy_ai_coord == None:
+            return -9999 # Winning the game. Not bad at all.
+        for (coord,unit) in state.player_units(PlayerTeam.Attacker):
+            if unit.type == UnitType.Virus:
+                total_hp -= unit.health*(10-state.get_manhattan_distance(coord,enemy_ai_coord)) # When viruses get closer to that enemy AI, that's good.
+            else:
+                total_hp -= unit.health*2 # Don't get caught up in combat, though, focus on rushing that AI.
+    else: # Tally how advantageous the state is for Defender.
+        my_ai_coord = None
+        for (coord,unit) in state.player_units(PlayerTeam.Defender):
+            if unit.type == UnitType.AI:
+                total_hp -= unit.health*10 # Your AI being alive is VERY important.
+                my_ai_coord = coord
+            else:
+                total_hp -= unit.health # Your army being alive in general is kind of important.
+        if my_ai_coord == None:
+            return 9999 # Losing the game is REALLY BAD.
+        for (coord,unit) in state.player_units(PlayerTeam.Attacker):
+            if unit.type == UnitType.Virus:
+                total_hp += unit.health*(10-state.get_manhattan_distance(coord,my_ai_coord)) # Viruses are bad. Viruses close to your AI is REALLY BAD.
+            else:
+                total_hp += unit.health*2 # Your enemy being alive in general is bad.
     return total_hp
 
 

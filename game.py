@@ -164,6 +164,16 @@ class Game:
                 exploding_tile = Coord(blast_point.row-1+x,blast_point.col-1+y)
                 self.mod_health(exploding_tile, -2)
 
+    def get_manhattan_distance(self, a: Coord, b: Coord) -> int:
+        """Manhattan distance between coords a and b"""
+        distance = 0
+        p = (a.row, a.col)
+        q = (b.row, b.col)
+        for p_i,q_i in zip(p,q):
+            distance += abs(p_i - q_i)
+        
+        return distance
+
 
     # Swapped to using Enums instead of hard-coded string values simply because it's less likely to result
     # in errors or unexpected behavior (reminder that things like "false" evaluates to boolean False in

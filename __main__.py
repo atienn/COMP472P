@@ -34,6 +34,9 @@ def main():
     else:
         game_type = GameType.CompVsComp
 
+    # Force the game-type to be a certain type (comment this out)
+    # game_type = GameType.AttackerVsComp
+
     # set up game options
     options = Options(game_type=game_type)
 
