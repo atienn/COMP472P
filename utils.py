@@ -66,8 +66,8 @@ class Coord:
         yield Coord(self.row+1,self.col)
         yield Coord(self.row,self.col+1)
 
-    @classmethod
-    def from_string(cls, s : str) -> Coord | None:
+    @staticmethod
+    def from_string(s : str) -> Coord | None:
         """Create a Coord from a string. ex: D2."""
         s = s.strip()
         for sep in " ,.:;-_":
@@ -80,12 +80,12 @@ class Coord:
         else:
             return None
     
-    @classmethod
-    def are_equal(cls, coord1 : Coord, coord2 : Coord) -> bool:
+    @staticmethod
+    def are_equal(coord1 : Coord, coord2 : Coord) -> bool:
         return coord1.row == coord2.row and coord1.col == coord2.col
 
-    @classmethod
-    def are_adjacent_cross(cls, coord1 : Coord, coord2 : Coord) -> bool:
+    @staticmethod
+    def are_adjacent_cross(coord1 : Coord, coord2 : Coord) -> bool:
         """Checks if the two coordinates are adjacent (excluding diagonals)"""
         
         # If the coordinates are more than 1 away in any dimension -> false
@@ -98,8 +98,8 @@ class Coord:
         # If both are 0, the coordinates point to the same cell, if both are 1, they are diagonal.
         return deltaX != deltaY
 
-    @classmethod
-    def are_adjecent(cls, coord1 : Coord, coord2 : Coord) -> bool:
+    @staticmethod
+    def are_adjecent(coord1 : Coord, coord2 : Coord) -> bool:
         """Checks if the two coordinates are adjacent (including diagonals)"""
     
         # If the coordinates are more than 1 away in any dimension -> false
@@ -111,6 +111,20 @@ class Coord:
         # After the guard checks above, the delta values can only be 0 or 1.
         # We just need to ensure that both coordinates don't point to the same cell.
         return deltaX + deltaY > 0
+    
+    @staticmethod
+    def get_manhattan_distance(a: Coord, b: Coord) -> int:
+        """Manhattan distance between coords a and b"""
+        distance = 0
+        p = (a.row, a.col)
+        q = (b.row, b.col)
+        for p_i,q_i in zip(p,q):
+            distance += abs(p_i - q_i)
+        
+        return distance
+    
+    def get_manhattan_distance_to(self, to: Coord) -> int:
+        return Coord.get_manhattan_distance(self, to)
     
 
         
@@ -180,3 +194,7 @@ class CoordPair:
     def are_adjecent(self : CoordPair) -> bool:
         """Checks if the two coordinates are adjacent (including diagonals)"""
         return Coord.are_adjecent(self.src, self.dst)
+    
+    def manhattan_distance(self) -> int:
+        """Manhattan distance beterrn source and destination coords"""
+        return Coord.get_manhattan_distance(self.src, self.dst)
