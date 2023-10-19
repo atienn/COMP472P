@@ -19,6 +19,8 @@ def sample_heuristic(state: "game.Game") -> int:
     # As a result, I'm commenting out the code for game state evaluation from the Attacker's perspective, but keeping it so we can use it for reference later.
     # Now without it, the Attacker AI seems to want to kill the Defender's Techs much more.
 
+    # We can still have multiple different heuristics, but all must compute the advantageousness of the game from the MAX player's perspective.
+
     # # # if state.next_player == PlayerTeam.Attacker: # Tally how advantageous the state is for Attacker.
     # # #     enemy_ai_coord = None
     # # #     for (coord,unit) in state.player_units(PlayerTeam.Defender):
