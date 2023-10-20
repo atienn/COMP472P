@@ -140,7 +140,10 @@ class Node:
     def run_minimax(root: "Node", is_maximizing: bool) -> "Node":
         """Runs minimax over a node tree and retreives the best next state."""
         # populate the tree with estimated node values
-        Node.minimax_propagate_values_up(root, is_maximizing)
+        if root.state.options.alpha_beta:
+            Node.alphabeta_propagate_values_up(root, -math.inf, +math.inf, False)
+        else:
+            Node.minimax_propagate_values_up(root, is_maximizing)   
         # select the best next state
         best_next_state = Node.get_max_node(root.children) if is_maximizing else Node.get_min_node(root.children)
         return best_next_state
@@ -166,8 +169,35 @@ class Node:
 
     # TODO: implement this
     @staticmethod
-    def run_alphabeta(
-            root: "Node"
-            # parameters
-        ) -> "Node":
-        pass
+    def alphabeta_propagate_values_up(
+            root: "Node",
+            alpha: int,
+            beta: int,
+            is_maximizing: bool,
+        ) -> int:
+
+        if root.is_leaf():
+            if root.value == None:
+                root.value = sample_heuristic(root.state)
+            return root.value
+
+        if is_maximizing:
+            best = -math.inf
+            for child in root.children:
+                score = Node.alphabeta_propagate_values_up(child, alpha, beta, not is_maximizing)
+                best = max(best,score)
+                alpha = max(alpha, best)
+                if beta <= alpha:
+                    break
+            root.value = best
+            return root.value
+        else:
+            best = math.inf
+            for child in root.children:
+                score = Node.alphabeta_propagate_values_up(child, alpha, beta, not is_maximizing)
+                best = min(best,score)
+                beta = min(beta, best)
+                if beta <= alpha:
+                    break
+            root.value = best
+            return root.value

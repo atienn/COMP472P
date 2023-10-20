@@ -409,7 +409,7 @@ class Game:
         elapsed_seconds = (datetime.now() - start_time).total_seconds()
         self.stats.total_seconds += elapsed_seconds
         log(f"Heuristic score: {score}")
-        log(f"Average recursive depth: {avg_depth:0.1f}")
+        # log(f"Average recursive depth: {avg_depth:0.1f}") # In accordance with the Moodle statement, this should be removed
         log(f"Evals per depth: ",end='')
         
         for k in sorted(self.stats.evaluations_per_depth.keys()):
