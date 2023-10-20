@@ -191,8 +191,9 @@ class Node:
 
         if is_maximizing:
             best = -math.inf
+            invert_maximizing = not is_maximizing # taking this outside the loop as to only compute it once
             for child in root.children:
-                score = Node.alphabeta_propagate_values_up(child, alpha, beta, not is_maximizing)
+                score = Node.alphabeta_propagate_values_up(child, alpha, beta, invert_maximizing)
                 best = max(best,score)
                 alpha = max(alpha, best)
                 if beta <= alpha:
@@ -201,8 +202,9 @@ class Node:
             return root.value
         else:
             best = math.inf
+            invert_maximizing = not is_maximizing # taking this outside the loop as to only compute it once
             for child in root.children:
-                score = Node.alphabeta_propagate_values_up(child, alpha, beta, not is_maximizing)
+                score = Node.alphabeta_propagate_values_up(child, alpha, beta, invert_maximizing)
                 best = min(best,score)
                 beta = min(beta, best)
                 if beta <= alpha:
