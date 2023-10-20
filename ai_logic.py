@@ -50,6 +50,8 @@ def sample_heuristic(state: "game.Game") -> int:
     for (coord,unit) in state.player_units(PlayerTeam.Attacker):
         if unit.type == UnitType.Virus:
             total_hp += unit.health*(10 - Coord.get_manhattan_distance(coord, my_ai_coord)) # Viruses are bad. Viruses close to your AI is REALLY BAD.
+        elif unit.type == UnitType.AI:
+            total_hp += unit.health*5 # The attacker should be protecting its AI too. And the defender might be interested in killing it over just stalling.
         else:
             total_hp += unit.health*2 # Your enemy being alive in general is bad.
     return total_hp
