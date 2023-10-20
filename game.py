@@ -381,8 +381,7 @@ class Game:
 
         # runs alpha-beta or minimax on the tree (depending on whichever is set active)
         is_maximizing = self.next_player.value == PlayerTeam.Defender # defender is MAX
-        best_move = Node.run_minimax(root, is_maximizing) # delete this line and uncomment the next once run_alpha_beta() is implemented.
-        # best_move = Node.run_alphabeta(root, is_maximizing) if self.options.alpha_beta else Node.run_minimax(root, is_maximizing)
+        best_move = Node.run_alphabeta(root, is_maximizing) if self.options.alpha_beta else Node.run_minimax(root, is_maximizing)
         
         # return the coordpair that represents enacting the best move found
         # TODO: retrieve and return the third tuple argument, which represents the average depth searched

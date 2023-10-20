@@ -140,10 +140,8 @@ class Node:
     def run_minimax(root: "Node", is_maximizing: bool) -> "Node":
         """Runs minimax over a node tree and retreives the best next state."""
         # populate the tree with estimated node values
-        if root.state.options.alpha_beta:
-            Node.alphabeta_propagate_values_up(root, -math.inf, +math.inf, False)
-        else:
-            Node.minimax_propagate_values_up(root, is_maximizing)   
+        Node.minimax_propagate_values_up(root, is_maximizing)   
+        
         # select the best next state
         best_next_state = Node.get_max_node(root.children) if is_maximizing else Node.get_min_node(root.children)
         return best_next_state
@@ -167,7 +165,17 @@ class Node:
             return root.value
 
 
-    # TODO: implement this
+    @staticmethod
+    def run_alphabeta(root: "Node", is_maximizing: bool) -> "Node":
+        """Runs minimax over a node tree and retreives the best next state."""
+        # populate the tree with estimated node values
+        Node.alphabeta_propagate_values_up(root, -math.inf, +math.inf, False)
+
+        # select the best next state
+        best_next_state = Node.get_max_node(root.children) if is_maximizing else Node.get_min_node(root.children)
+        return best_next_state
+
+
     @staticmethod
     def alphabeta_propagate_values_up(
             root: "Node",
