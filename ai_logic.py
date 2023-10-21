@@ -101,7 +101,7 @@ class Node:
         return self.children is None or len(self.children) == 0
 
     @staticmethod
-    # TODO: this method is very costly and can easily reach, it should be re-worked and integrated as part of the minimax/alpha-beta searches
+    # TODO: this method is very costly and can easily take up more time than what is allowed for move search, it should be re-worked and integrated as part of the minimax/alpha-beta searches
     def generate_node_tree(
             root: "Node",
             max_depth: int, 
