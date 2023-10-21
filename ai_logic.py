@@ -1,7 +1,9 @@
-from typing import Iterable
+import math
+from typing import Iterable, ClassVar
+from datetime import datetime
 from utils import Coord, CoordPair, PlayerTeam
 from units import UnitType
-import math
+from output import log
 # Python doesn't have a way to have clean way to deal with circular references. As a result,
 # we need to import the whole "game" module here and change type hints for the Game class into "game.Game".
 import game
@@ -10,7 +12,7 @@ import game
 def heuristic_e0(state: "game.Game") -> int:
     return heuristic_e0_army_score(state, PlayerTeam.Defender) - heuristic_e0_army_score(state, PlayerTeam.Attacker)
 
-def heuristic_e0_army_score(state: "game.Game", player: PlayerTeam):    
+def heuristic_e0_army_score(state: "game.Game", player: PlayerTeam):
     score = 0
     for (_,unit) in state.player_units(player):
         if unit.type == UnitType.AI: # AI is worth 9999
@@ -75,12 +77,18 @@ def heuristic_e2(state: "game.Game") -> int:
     moves_weight = 1 # change this as needed
     return heuristic_e1(state) + moves_weight * (len(state.move_candidates(PlayerTeam.Defender)) - len(state.move_candidates(PlayerTeam.Defender)))
 
+class OutOfTimeException(Exception):
+    pass
+
 class Node:
     value: int | None # the estimated value of this game state for the maximizing player
     state: "game.Game" # the game state this node represents
     parent: "Node" # the game state that preceded this one
     action: CoordPair # what action was performed from the parent state to reach this one
     children: list["Node"] # the list of possible next game states from this one
+
+    start_time: ClassVar[datetime]
+    max_time: ClassVar[float]
 
     def __init__(self, state: "game.Game", from_parent: CoordPair = None, parent: "Node" = None, children: Iterable["Node"] = None) -> "Node":
         self.state = state
@@ -96,6 +104,7 @@ class Node:
         return self.children is None or len(self.children) == 0
 
     @staticmethod
+    # TODO: this method is very costly and can easily reach, it should be re-worked and integrated as part of the minimax/alpha-beta searches
     def generate_node_tree(
             root: "Node",
             max_depth: int, 
@@ -151,22 +160,57 @@ class Node:
         
         return min_node
 
+    @staticmethod
+    def take_best_next_state(root: "Node", is_maximizing: bool, error_str: str = None) -> "Node":
+        # select the best next state, the node with largest/smallest value depending on MAX or MIN player.
+        best_next_state = Node.get_max_node(root.children) if is_maximizing else Node.get_min_node(root.children)
+
+        # if the result is None, then the root doesn't have any child with a heuristic value
+        if best_next_state is None: 
+            log(error_str)
+            next_state, move, _ = root.state.random_next_state()
+            return Node(next_state, move, root)
+        return best_next_state
+    
+    @staticmethod
+    def out_of_time_check(root: "Node", start_time: datetime):
+        """Raises an OutOfTimeException if time elapsed exceeds the game's max search time."""
+        if start_time is None: 
+            return
+        
+        elapsed_time = (datetime.now() - start_time).total_seconds()
+        if elapsed_time >= root.state.options.max_time:
+            raise OutOfTimeException("Ran out of time (%f)" % elapsed_time)
+
     #endregion
 
 
     @staticmethod
     def run_minimax(root: "Node", is_maximizing: bool) -> "Node":
         """Runs minimax over a node tree and retreives the best next state."""
-        # populate the tree with estimated node values
-        Node.minimax_propagate_values_up(root, is_maximizing)   
-        
-        # select the best next state
-        best_next_state = Node.get_max_node(root.children) if is_maximizing else Node.get_min_node(root.children)
-        return best_next_state
+        # get the current time to keep track of how long minimax has been running
+        start_time = datetime.now()
+
+        # try to populate the tree with estimated node values
+        try: 
+            Node.minimax_propagate_values_up(root, is_maximizing, start_time)
+        # if we run out of time, return the best immediate node that we had time to evaluate
+        except OutOfTimeException:
+            return Node.take_best_next_state(root, is_maximizing, "Minimax did not have time to evaluate any of the next actions. Returned a random move instead.")
+        # if minimax had time to complete, return the best state
+        return Node.take_best_next_state(root, is_maximizing, "The game state does not seem to have any possible successors. Attempting to return a random move...")
 
 
     @staticmethod 
-    def minimax_propagate_values_up(root: "Node", is_maximizing: bool) -> int:
+    def minimax_propagate_values_up(
+            root: "Node",
+            is_maximizing: bool,
+            start_time: datetime = None
+        ) -> int:
+
+        # check if we're out of time
+        Node.out_of_time_check(root, start_time)
+
         # if the node is a leaf, get its estimated value (compute e(n) if needed)
         if root.is_leaf(): 
             if root.value == None:
@@ -176,7 +220,7 @@ class Node:
         # otherwise, propagate the call down the tree and select max/min once values are obtained
         else:
             invert_maximizing = not is_maximizing # compute only once
-            children_values = [ Node.minimax_propagate_values_up(node, invert_maximizing) for node in root.children ]
+            children_values = [ Node.minimax_propagate_values_up(node, invert_maximizing, start_time) for node in root.children ]
             
             # find the value of this node from its children (whether it's at MAX or MIN level) and return it
             root.value = max(children_values) if is_maximizing else min(children_values)
@@ -186,12 +230,19 @@ class Node:
     @staticmethod
     def run_alphabeta(root: "Node", is_maximizing: bool) -> "Node":
         """Runs alpha-beta over a node tree and retreives the best next state."""
-        # populate the tree with estimated node values
-        Node.alphabeta_propagate_values_up(root, -math.inf, +math.inf, False)
+        # get the current time to keep track of how long minimax has been running
+        start_time = datetime.now()
 
-        # select the best next state
-        best_next_state = Node.get_max_node(root.children) if is_maximizing else Node.get_min_node(root.children)
-        return best_next_state
+        # try to populate the tree with estimated node values
+        try:
+            Node.alphabeta_propagate_values_up(root, -math.inf, +math.inf, is_maximizing, start_time)
+    
+        # if we run out of time, return the best immediate node that we had time to evaluate
+        except OutOfTimeException:
+            return Node.take_best_next_state(root, is_maximizing, "Alpha-Beta did not have time to evaluate any of the next actions. Returned a random move instead.")
+        # if alpha-beta had time to complete, return the best state
+        return Node.take_best_next_state(root, is_maximizing, "The game state does not seem to have any possible successors. Attempting to return a random move...")
+
 
 
     @staticmethod
@@ -200,7 +251,11 @@ class Node:
             alpha: int,
             beta: int,
             is_maximizing: bool,
+            start_time: datetime
         ) -> int:
+
+        # check if we're out of time
+        Node.out_of_time_check(root, start_time)
 
         if root.is_leaf():
             if root.value == None:
@@ -211,7 +266,7 @@ class Node:
             best = -math.inf
             invert_maximizing = not is_maximizing # taking this outside the loop as to only compute it once
             for child in root.children:
-                score = Node.alphabeta_propagate_values_up(child, alpha, beta, invert_maximizing)
+                score = Node.alphabeta_propagate_values_up(child, alpha, beta, invert_maximizing, start_time)
                 best = max(best,score)
                 alpha = max(alpha, best)
                 if beta <= alpha:
@@ -222,7 +277,7 @@ class Node:
             best = math.inf
             invert_maximizing = not is_maximizing # taking this outside the loop as to only compute it once
             for child in root.children:
-                score = Node.alphabeta_propagate_values_up(child, alpha, beta, invert_maximizing)
+                score = Node.alphabeta_propagate_values_up(child, alpha, beta, invert_maximizing, start_time)
                 best = min(best,score)
                 beta = min(beta, best)
                 if beta <= alpha:

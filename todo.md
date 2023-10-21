@@ -20,4 +20,5 @@ Thing that we need to do for the project. Expand as needed.
 * The winning strategy for Attacker seems to be: get your programs to wreck at least one tech, then send in the viruses to pwn the AI.
 * If the Defender gets to a state where only both AIs are left alive, it has basically won because of the rule where the AIs can only move away from their base - unless their AI has moved forward already.
 * The Defender should value its Techs more. And block Viruses trying to go for sneaky rushes through openings.
+- [ ] Rework `generate_node_tree()` and integrate successor generation within minimax/alpha-beta instead of generating whole tree and then navigating it
 ### D3

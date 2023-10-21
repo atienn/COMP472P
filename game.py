@@ -270,7 +270,7 @@ class Game:
             if self._defender_has_ai:
                 return None
             else:
-                return PlayerTeam.Attacker    
+                return PlayerTeam.Attacker
         return PlayerTeam.Defender
 
     #endregion
@@ -361,8 +361,7 @@ class Game:
             action, _ = self.determine_action(move)
             if action != UnitAction.Invalid:
                 yield (move.clone(), action)
-            
-            # Julien: I didn't really understand that. It just kept causing bugs by changing coords like (33,23) to (23,23) and causing bugs. 
+                
     
     def next_state_candidates(self) -> Iterable[Tuple[Game, CoordPair]]:
         other_player = PlayerTeam.next(self.next_player)
@@ -388,21 +387,24 @@ class Game:
         print("best_move" + best_move.__str__())
         print("best.move.action" + best_move.action.__str__())
         return (best_move.value, best_move.action, 0)
-
-
-    def random_move(self) -> Tuple[int, CoordPair | None, float]:
-        """Returns a random move."""
+        
+    def random_next_state(self) -> tuple[Game, CoordPair, UnitAction]:
+        """Returns a random successor state to this one."""
+        # get a list of all possible moves that can be performed and shuffle it
         move_candidates = list(self.move_candidates(self.next_player))
+        if len(move_candidates) == 0: return None
         random.shuffle(move_candidates)
-        if len(move_candidates) > 0:
-            return (0, move_candidates[0], 1)
-        else:
-            return (0, None, 0)
+
+        # clone the current game and perform the first move of the list on it
+        move, action = move_candidates[0]
+        next_state = self.clone()
+        next_state.perform_move(move, action)
+        return (next_state, move, action)
 
     def suggest_move(self) -> CoordPair | None:
         """Suggest the next move using minimax alpha beta."""
+    
         start_time = datetime.now()
-        
         score, move, avg_depth = self.search_for_best_move()
 
         elapsed_seconds = (datetime.now() - start_time).total_seconds()
