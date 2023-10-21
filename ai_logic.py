@@ -87,9 +87,6 @@ class Node:
     action: CoordPair # what action was performed from the parent state to reach this one
     children: list["Node"] # the list of possible next game states from this one
 
-    start_time: ClassVar[datetime]
-    max_time: ClassVar[float]
-
     def __init__(self, state: "game.Game", from_parent: CoordPair = None, parent: "Node" = None, children: Iterable["Node"] = None) -> "Node":
         self.state = state
         self.parent = parent
