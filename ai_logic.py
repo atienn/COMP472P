@@ -7,7 +7,20 @@ import math
 import game
 
 # For our minimax/alpha-beta heuristics, MAX is the Defender and MIN is the attacker.
-def sample_heuristic(state: "game.Game") -> int:
+def heuristic_e0(state: "game.Game") -> int:
+    return heuristic_e0_army_score(state, PlayerTeam.Defender) - heuristic_e0_army_score(state, PlayerTeam.Attacker)
+
+def heuristic_e0_army_score(state: "game.Game", player: PlayerTeam):    
+    score = 0
+    for (_,unit) in state.player_units(player):
+        if unit.type == UnitType.AI: # AI is worth 9999
+            score += 9999
+        else: # every other unit type is worth 3
+            score += 3
+    return score
+
+
+def heuristic_e1(state: "game.Game") -> int:
     total_hp = 0
 
     # REMINDER ON HOW HEURISTICS WORK: Heuristics are always one-sided, they always evaluate the "advantageousness" of
@@ -152,7 +165,7 @@ class Node:
         # if the node is a leaf, get its estimated value (compute e(n) if needed)
         if root.is_leaf(): 
             if root.value == None:
-                root.value = sample_heuristic(root.state)
+                root.value = heuristic_e1(root.state)
             return root.value
         
         # otherwise, propagate the call down the tree and select max/min once values are obtained
@@ -167,7 +180,7 @@ class Node:
 
     @staticmethod
     def run_alphabeta(root: "Node", is_maximizing: bool) -> "Node":
-        """Runs minimax over a node tree and retreives the best next state."""
+        """Runs alpha-beta over a node tree and retreives the best next state."""
         # populate the tree with estimated node values
         Node.alphabeta_propagate_values_up(root, -math.inf, +math.inf, False)
 
@@ -186,7 +199,7 @@ class Node:
 
         if root.is_leaf():
             if root.value == None:
-                root.value = sample_heuristic(root.state)
+                root.value = heuristic_e1(root.state)
             return root.value
 
         if is_maximizing:
