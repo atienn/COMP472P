@@ -340,11 +340,11 @@ class Game:
             if unit is not None and unit.player == player:
                 yield (coord,unit)
 
-    def move_candidates(self) -> Iterable[Tuple[CoordPair, UnitAction]]:
+    def move_candidates(self, player) -> Iterable[Tuple[CoordPair, UnitAction]]:
         """Generate valid move candidates for the next player."""
         # we clone the coordpairs as not to have units getting moved by accident
         move = CoordPair()
-        for (src,_) in self.player_units(self.next_player):
+        for (src,_) in self.player_units(player):
             move.src = src
 
             # Check if moving to each adjacent unit is a valid move.
@@ -366,7 +366,7 @@ class Game:
     
     def next_state_candidates(self) -> Iterable[Tuple[Game, CoordPair]]:
         other_player = PlayerTeam.next(self.next_player)
-        for move, action in self.move_candidates():
+        for move, action in self.move_candidates(self.next_player):
             state = self.clone()
             state.next_player = other_player
             state.perform_move(move, action) # unpack tuple into CoordPair and UnitAction
@@ -392,7 +392,7 @@ class Game:
 
     def random_move(self) -> Tuple[int, CoordPair | None, float]:
         """Returns a random move."""
-        move_candidates = list(self.move_candidates())
+        move_candidates = list(self.move_candidates(self.next_player))
         random.shuffle(move_candidates)
         if len(move_candidates) > 0:
             return (0, move_candidates[0], 1)

@@ -69,6 +69,11 @@ def heuristic_e1(state: "game.Game") -> int:
             total_hp += unit.health*2 # Your enemy being alive in general is bad.
     return total_hp
 
+# e1, but also assign score based on how many moves each player can do.
+# I threw this together super quickly, feel free to change.
+def heuristic_e2(state: "game.Game") -> int:
+    moves_weight = 1 # change this as needed
+    return heuristic_e1(state) + moves_weight * (len(state.move_candidates(PlayerTeam.Defender)) - len(state.move_candidates(PlayerTeam.Defender)))
 
 class Node:
     value: int | None # the estimated value of this game state for the maximizing player
