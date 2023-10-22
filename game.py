@@ -27,7 +27,6 @@ class Options:
     """Representation of the game options."""
     dim: int = 5
     max_depth : int | None = 4
-    min_depth : int | None = 2
     max_time : float | None = 5.0
     game_type : GameType = GameType.AttackerVsDefender
     alpha_beta : bool = True
@@ -379,7 +378,7 @@ class Game:
 
         next_nodes_to_search = [root]
         nodes_queued = []
-        current_max_depth = self.options.min_depth # Start at the not very ambitious min depth
+        current_max_depth = 1 # Start at the not very ambitious min depth
         start_time = datetime.now()
 
         while Node.out_of_time_check(root, start_time) < self.options.max_time*0.9: # While at least 10% of the time limit remains...
