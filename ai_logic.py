@@ -101,10 +101,8 @@ class Node:
         return self.children is None or len(self.children) == 0
 
     @staticmethod
-    # TODO: this method is very costly and can easily take up more time than what is allowed for move search, it should be re-worked and integrated as part of the minimax/alpha-beta searches
     def generate_node_tree(
             root: "Node",
-            max_depth: int, 
             current_depth: int = 0
         ):
         root.children = list()
@@ -113,14 +111,7 @@ class Node:
         for next_state in root.state.next_state_candidates():
             child_node = Node(*next_state, root) # * unpacks next_state tuple into Game and Coordpair arguments
             root.children.append(child_node)
-
-        # stop if we reached max depth
-        current_depth += 1
-
-        if current_depth >= max_depth: return
-        # generate children
-        for child in root.children:
-            Node.generate_node_tree(child, max_depth, current_depth)
+        return root.children
     
 
     #region UTILITY
@@ -178,6 +169,8 @@ class Node:
         elapsed_time = (datetime.now() - start_time).total_seconds()
         if elapsed_time >= root.state.options.max_time:
             raise OutOfTimeException("Ran out of time (%f)" % elapsed_time)
+        else:
+            return elapsed_time
 
     #endregion
 

@@ -374,13 +374,29 @@ class Game:
 
     def search_for_best_move(self) -> Tuple[int, CoordPair | None, float ]: 
         # clone the game state, store it into a node
-        root = Node(self.clone()) 
-        # generate the node tree under the node representing the current game state
-        Node.generate_node_tree(root, self.options.max_depth)
+        root = Node(self.clone())
 
-        # runs alpha-beta or minimax on the tree (depending on whichever is set active)
-        is_maximizing = self.next_player.value == PlayerTeam.Defender # defender is MAX
-        best_move = Node.run_alphabeta(root, is_maximizing) if self.options.alpha_beta else Node.run_minimax(root, is_maximizing)
+        next_nodes_to_search = [root]
+        nodes_queued = []
+        current_max_depth = 1 # Start at the not very ambitious 1-depth search.
+        start_time = datetime.now()
+
+        while Node.out_of_time_check(root, start_time) < self.options.max_time*0.9: # While at least 10% of the time limit remains...
+            for i in next_nodes_to_search: # Give all leaf nodes new children.
+                # generate the node tree under the node representing the current game state
+                nodes_queued += Node.generate_node_tree(i)
+                if Node.out_of_time_check(root, start_time) > self.options.max_time*0.9: # Having 10% time left instantly stops tree construction.
+                    break 
+            # runs alpha-beta or minimax on the tree (depending on whichever is set active)
+            is_maximizing = self.next_player.value == PlayerTeam.Defender # defender is MAX
+            best_move = Node.run_alphabeta(root, is_maximizing) if self.options.alpha_beta else Node.run_minimax(root, is_maximizing)
+
+            next_nodes_to_search = nodes_queued # The leaf nodes are recorded to continue building where we left off in the first loop.
+            nodes_queued = []
+            if current_max_depth < self.options.max_depth: # Increase the depth while we still have time. If we haven't reached the max depth, that is.
+                current_max_depth += 1
+            else:
+                break
         
         # return the coordpair that represents enacting the best move found
         # TODO: retrieve and return the third tuple argument, which represents the average depth searched
