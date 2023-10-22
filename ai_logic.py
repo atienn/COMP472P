@@ -9,6 +9,15 @@ from output import log
 import game
 
 # For our minimax/alpha-beta heuristics, MAX is the Defender and MIN is the attacker.
+
+def choose_heuristic(state: "game.Game"):
+    if state.options.heuristic_choice == 0:
+        return heuristic_e0(state)
+    elif state.options.heuristic_choice == 1:
+        return heuristic_e1(state)
+    else:
+        return heuristic_e2(state)
+
 def heuristic_e0(state: "game.Game") -> int:
     return heuristic_e0_army_score(state, PlayerTeam.Defender) - heuristic_e0_army_score(state, PlayerTeam.Attacker)
 
@@ -204,7 +213,7 @@ class Node:
         # if the node is a leaf, get its estimated value (compute e(n) if needed)
         if root.is_leaf(): 
             if root.value == None:
-                root.value = heuristic_e1(root.state)
+                root.value = choose_heuristic(root.state)
             return root.value
         
         # otherwise, propagate the call down the tree and select max/min once values are obtained
@@ -249,7 +258,7 @@ class Node:
 
         if root.is_leaf():
             if root.value == None:
-                root.value = heuristic_e1(root.state)
+                root.value = choose_heuristic(root.state)
             return root.value
 
         if is_maximizing:

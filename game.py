@@ -34,6 +34,7 @@ class Options:
     max_turns : int | None = 100
     randomize_moves : bool = True
     broker : str | None = None
+    heuristic_choice: int = 1
 
 
 ##############################################################################################################
@@ -378,7 +379,7 @@ class Game:
 
         next_nodes_to_search = [root]
         nodes_queued = []
-        current_max_depth = 1 # Start at the not very ambitious 1-depth search.
+        current_max_depth = self.options.min_depth # Start at the not very ambitious min depth
         start_time = datetime.now()
 
         while Node.out_of_time_check(root, start_time) < self.options.max_time*0.9: # While at least 10% of the time limit remains...
