@@ -387,7 +387,7 @@ class Game:
 
         tree_size = 0
         leaf_nodes_num = 0
-        time_cutoff = 0.9
+        time_cutoff = 0.85
         if self.options.heuristic_choice == 2:
             time_cutoff = 0.5
 
