@@ -385,18 +385,21 @@ class Game:
 
         tree_size = 0
         leaf_nodes_num = 0
+        time_cutoff = 0.9
+        if self.options.heuristic_choice == 2:
+            time_cutoff = 0.5
 
         start_time = datetime.now()
         is_maximizing = self.next_player == PlayerTeam.Defender # defender is MAX
 
-        while Node.out_of_time_check(root, start_time) < self.options.max_time*0.9: # While at least 10% of the time limit remains...
+        while Node.out_of_time_check(root, start_time) < self.options.max_time*time_cutoff: # While at least 10% of the time limit remains...
             for i in next_nodes_to_search: # Give all leaf nodes new children.
                 # generate the node tree under the node representing the current game state
                 new_nodes = Node.generate_node_tree(i)
                 nodes_queued += new_nodes
                 leaf_nodes_num += len(new_nodes) - 1
                 tree_size += len(new_nodes)
-                if Node.out_of_time_check(root, start_time) > self.options.max_time*0.9: # Having 10% time left instantly stops tree construction.
+                if Node.out_of_time_check(root, start_time) > self.options.max_time*time_cutoff: # Having 10% time left instantly stops tree construction.
                     break 
             # runs alpha-beta or minimax on the tree (depending on whichever is set active)
             best_move = Node.run_alphabeta(root, is_maximizing) if self.options.alpha_beta else Node.run_minimax(root, is_maximizing)

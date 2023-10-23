@@ -84,7 +84,7 @@ def heuristic_e1(state: "game.Game") -> int:
 # I threw this together super quickly, feel free to change.
 def heuristic_e2(state: "game.Game") -> int:
     moves_weight = 1 # change this as needed
-    return heuristic_e1(state) + moves_weight * (len(state.move_candidates(PlayerTeam.Defender)) - len(state.move_candidates(PlayerTeam.Defender)))
+    return heuristic_e1(state) + moves_weight * (len(list(state.move_candidates(PlayerTeam.Defender))) - len(list(state.move_candidates(PlayerTeam.Defender))))
 
 class OutOfTimeException(Exception):
     pass
