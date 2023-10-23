@@ -229,12 +229,12 @@ class Game:
         if action == UnitAction.Move:
             self.set(coords.dst, actingUnit)
             self.set(coords.src, None)
-            return (True, f"{self.next_player.name}'s {actingUnit.unit_name_string()} moves from {coords.src.to_string()} to {coords.dst.to_string()}.")
+            return (True, f"{self.next_player.name}'s {actingUnit.unit_name_string()} moves from {coords.src.to_string()} to {coords.dst.to_string()}.\n")
         if action == UnitAction.Kaboom:
             exploder = self.get(coords.dst)
             self.destroy(coords.dst)
             self.explode(coords.dst)
-            return (True, f"{self.next_player.name}'s {exploder.unit_name_string()} at {coords.dst.to_string()} explodes in a fiery blast!! (2 damage to all nearby units)")
+            return (True, f"{self.next_player.name}'s {exploder.unit_name_string()} at {coords.dst.to_string()} explodes in a fiery blast!! (2 damage to all nearby units)\n")
 
         otherUnit = self.get(coords.dst)
 
@@ -243,11 +243,11 @@ class Game:
             # but do damage the calculation both ways just in case
             self.mod_health(coords.dst, -actingUnit.damage_amount(otherUnit))
             self.mod_health(coords.src, -otherUnit.damage_amount(actingUnit))
-            return (True,f"{self.next_player.name}'s {actingUnit.unit_name_string()} at {coords.src.to_string()} attacks the {otherUnit.unit_name_string()} at {coords.dst.to_string()}! ({actingUnit.damage_amount(otherUnit)} damage dealt, {otherUnit.damage_amount(actingUnit)} damage taken as retaliation)")
+            return (True,f"{self.next_player.name}'s {actingUnit.unit_name_string()} at {coords.src.to_string()} attacks the {otherUnit.unit_name_string()} at {coords.dst.to_string()}! ({actingUnit.damage_amount(otherUnit)} damage dealt, {otherUnit.damage_amount(actingUnit)} damage taken as retaliation)\n")
         if action == UnitAction.Repair:
             health_value = actingUnit.repair_amount(otherUnit)
             otherUnit.mod_health(health_value)
-            return (True,f"{self.next_player.name}'s {actingUnit.unit_name_string()} at {coords.src.to_string()} repairs their {otherUnit.unit_name_string()} ally at {coords.dst.to_string()}! ({health_value} damage repaired)")
+            return (True,f"{self.next_player.name}'s {actingUnit.unit_name_string()} at {coords.src.to_string()} repairs their {otherUnit.unit_name_string()} ally at {coords.dst.to_string()}! ({health_value} damage repaired)\n")
 
         return (False, "invalid move")
 
@@ -442,18 +442,18 @@ class Game:
 
         elapsed_seconds = (datetime.now() - start_time).total_seconds()
         self.stats.total_seconds += elapsed_seconds
-        log(f"Heuristic score: {score}")
-        log(f"Cumulative evals: {self.cumulative_evals}")
+        log(f"Heuristic score: {score}\n")
+        log(f"Cumulative evals: {self.cumulative_evals}\n")
         all_depths_evals = ""
         all_depths_evals_percent = ""
         list_of_depths = list(self.cumulative_evals_per_depth.values())
         for i in range(0,len(list_of_depths)):
             all_depths_evals += " " + str(i+1) + "=" + str(list_of_depths[i])
             all_depths_evals_percent += " " + str(i+1) + "=" + str(round(list_of_depths[i]/self.cumulative_evals*100, 2)) + "%"
-        log(f"Cumulative evals by depth: {all_depths_evals}")
-        log(f"Cumulative evals % by depth: {all_depths_evals_percent}")
-        log(f"Average branching factor: {self.average_branch_factor}")
-        log(f"Elapsed time for this action: {elapsed_seconds:0.1f}s")
+        log(f"Cumulative evals by depth: {all_depths_evals}\n")
+        log(f"Cumulative evals % by depth: {all_depths_evals_percent}\n")
+        log(f"Average branching factor: {self.average_branch_factor}\n")
+        log(f"Elapsed time for this action: {elapsed_seconds:0.1f}s\n")
         
         return move
 

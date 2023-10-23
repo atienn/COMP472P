@@ -54,9 +54,9 @@ def main():
         FileOutput.open_file("game_trace_{}_{}_{}".format(options.alpha_beta, options.max_time, options.max_turns))
 
     # the main game loop
-    log("Welcome to AI Wargame. Destroy the enemy AI to win!")
-    log(f"The current gamemode is set to {game.gamemode_name_string(game_type)}.")
-    log(f"After {game.options.max_turns} turns, the Defender will win by default!")
+    log("Welcome to AI Wargame. Destroy the enemy AI to win!\n")
+    log(f"The current gamemode is set to {game.gamemode_name_string(game_type)}.\n")
+    log(f"After {game.options.max_turns} turns, the Defender will win by default!\n")
     while True:
         log()
         log(game)
