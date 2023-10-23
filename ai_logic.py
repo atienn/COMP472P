@@ -1,5 +1,5 @@
 import math
-from typing import Iterable, ClassVar
+from typing import Iterable
 from datetime import datetime
 from utils import Coord, CoordPair, PlayerTeam
 from units import UnitType
@@ -34,34 +34,6 @@ def heuristic_e0_army_score(state: "game.Game", player: PlayerTeam):
 def heuristic_e1(state: "game.Game") -> int:
     total_hp = 0
 
-    # REMINDER ON HOW HEURISTICS WORK: Heuristics are always one-sided, they always evaluate the "advantageousness" of
-    # the game state from the same player's perspective, regardless of who the current player is.
-    # In our case, we evaluate the game state from the perspective of the defender (but it could also be the other way around).
-    # This is why we have MAX and MIN. MAX (defender) tries to maximize the advantageousness of the game state from the defender's perspective (itself),
-    # while MIN (attacker) tries to minimize it (leading it to be more attacker-advantageous).
-    # If we have a heuristic that alternates between player perspectives, the minimax algorithm (and subsequently alpha-beta) simply don't work as expected.
-    # As a result, I'm commenting out the code for game state evaluation from the Attacker's perspective, but keeping it so we can use it for reference later.
-    # Now without it, the Attacker AI seems to want to kill the Defender's Techs much more.
-
-    # We can still have multiple different heuristics, but all must compute the advantageousness of the game from the MAX player's perspective.
-
-    # # # if state.next_player == PlayerTeam.Attacker: # Tally how advantageous the state is for Attacker.
-    # # #     enemy_ai_coord = None
-    # # #     for (coord,unit) in state.player_units(PlayerTeam.Defender):
-    # # #         if unit.type == UnitType.AI:
-    # # #             total_hp += unit.health*10 # That enemy AI MUST die!
-    # # #             enemy_ai_coord = coord
-    # # #         else:
-    # # #             total_hp += unit.health # But your enemy in general being alive is bad.
-    # # #     if enemy_ai_coord == None:
-    # # #         return -9999 # Winning the game. Not bad at all.
-    # # #     for (coord,unit) in state.player_units(PlayerTeam.Attacker):
-    # # #         if unit.type == UnitType.Virus:
-    # # #             total_hp -= unit.health*(10 - Coord.get_manhattan_distance(coord, enemy_ai_coord)) # When viruses get closer to that enemy AI, that's good.
-    # # #         else:
-    # # #             total_hp -= unit.health*2 # Don't get caught up in combat, though, focus on rushing that AI.
-    # # # else: # Tally how advantageous the state is for Defender.
-
     my_ai_coord = None
     for (coord,unit) in state.player_units(PlayerTeam.Defender):
         if unit.type == UnitType.AI:
@@ -81,7 +53,6 @@ def heuristic_e1(state: "game.Game") -> int:
     return total_hp
 
 # e1, but also assign score based on how many moves each player can do.
-# I threw this together super quickly, feel free to change.
 def heuristic_e2(state: "game.Game") -> int:
     moves_weight = 1 # change this as needed
     return heuristic_e1(state) + moves_weight * (len(list(state.move_candidates(PlayerTeam.Defender))) - len(list(state.move_candidates(PlayerTeam.Defender))))
@@ -110,10 +81,7 @@ class Node:
         return self.children is None or len(self.children) == 0
 
     @staticmethod
-    def generate_node_tree(
-            root: "Node",
-            current_depth: int = 0
-        ):
+    def generate_successors(root: "Node"):
         root.children = list()
 
         # generate the possible substates, evaluate them
@@ -170,7 +138,7 @@ class Node:
         return best_next_state
     
     @staticmethod
-    def out_of_time_check(root: "Node", start_time: datetime):
+    def out_of_time_check(root: "Node", start_time: datetime) -> float:
         """Raises an OutOfTimeException if time elapsed exceeds the game's max search time."""
         if start_time is None: 
             return

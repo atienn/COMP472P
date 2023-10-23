@@ -11,7 +11,7 @@ import requests
 from output import log
 from utils import Coord, CoordPair, PlayerTeam
 from units import UnitAction, UnitType, Unit
-from ai_logic import Node
+from ai_logic import Node, OutOfTimeException
 
 
 class GameType(Enum):
@@ -384,8 +384,9 @@ class Game:
         next_nodes_to_search = [root]
         nodes_queued = []
         current_max_depth = 1 # Start at the not very ambitious min depth
+        best_move = None
 
-        tree_size = 0
+        tree_size = 1
         leaf_nodes_num = 0
         time_cutoff = 0.85
         if self.options.heuristic_choice == 2:
@@ -394,33 +395,41 @@ class Game:
         start_time = datetime.now()
         is_maximizing = self.next_player == PlayerTeam.Defender # defender is MAX
 
-        while Node.out_of_time_check(root, start_time) < self.options.max_time*time_cutoff: # While at least 10% of the time limit remains...
-            for i in next_nodes_to_search: # Give all leaf nodes new children.
-                # generate the node tree under the node representing the current game state
-                new_nodes = Node.generate_node_tree(i)
-                nodes_queued += new_nodes
-                leaf_nodes_num += len(new_nodes) - 1
-                tree_size += len(new_nodes)
-                if Node.out_of_time_check(root, start_time) > self.options.max_time*time_cutoff: # Having 10% time left instantly stops tree construction.
-                    break 
-            # runs alpha-beta or minimax on the tree (depending on whichever is set active)
-            best_move = Node.run_alphabeta(root, is_maximizing) if self.options.alpha_beta else Node.run_minimax(root, is_maximizing)
-            self.cumulative_evals += len(nodes_queued)
-            if self.cumulative_evals_per_depth.get(current_max_depth) == None:
-                self.cumulative_evals_per_depth[current_max_depth] = 0
-            self.cumulative_evals_per_depth[current_max_depth] += len(nodes_queued)
-            next_nodes_to_search = nodes_queued # The leaf nodes are recorded to continue building where we left off in the first loop.
-            nodes_queued = []
-            if current_max_depth < self.options.max_depth: # Increase the depth while we still have time. If we haven't reached the max depth, that is.
-                current_max_depth += 1
-            else:
-                break
+        try:
+            while Node.out_of_time_check(root, start_time) < self.options.max_time*time_cutoff: # While at least 10% of the time limit remains...
+                for node in next_nodes_to_search: # Give all leaf nodes new children.
+                    # generate the node tree under the node representing the current game state
+                    new_nodes = Node.generate_successors(node)
+                    nodes_queued += new_nodes
+                    leaf_nodes_num += len(new_nodes) - 1
+                    tree_size += len(new_nodes)
+                    if Node.out_of_time_check(root, start_time) > self.options.max_time*time_cutoff: # Having 10% time left instantly stops tree construction.
+                        break 
+                # runs alpha-beta or minimax on the tree (depending on whichever is set active)
+                best_move = Node.run_alphabeta(root, is_maximizing) if self.options.alpha_beta else Node.run_minimax(root, is_maximizing)
+                self.cumulative_evals += len(nodes_queued)
+                if self.cumulative_evals_per_depth.get(current_max_depth) == None:
+                    self.cumulative_evals_per_depth[current_max_depth] = 0
+                self.cumulative_evals_per_depth[current_max_depth] += len(nodes_queued)
+                next_nodes_to_search = nodes_queued # The leaf nodes are recorded to continue building where we left off in the first loop.
+                nodes_queued = []
+                if current_max_depth < self.options.max_depth: # Increase the depth while we still have time. If we haven't reached the max depth, that is.
+                    current_max_depth += 1
+                else:
+                    break
+        # if Node.out_of_time_check() throw an exception, drop everything and return best move found
+        except OutOfTimeException:
+            log("Move search ran out of time!\n")
         
-        # return the coordpair that represents enacting the best move found
-        # print("best_move" + best_move.__str__())
-        # print("best.move.action" + best_move.action.__str__())
+        # if we could not find a best move (like if max_time = 0), return a random move
+        if best_move == None:
+            # create a node to encapsulate a randomly picked "best" move
+            next_state, move, _ = root.state.random_next_state()
+            best_move = Node(next_state, move) 
+
         non_leaf_node_amount = tree_size - leaf_nodes_num
         self.average_branch_factor = round(tree_size/non_leaf_node_amount,4)
+        # return the coordpair that represents enacting the best move found
         return (best_move.value, best_move.action, 0)
         
     def random_next_state(self) -> tuple[Game, CoordPair, UnitAction]:
