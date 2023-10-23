@@ -65,19 +65,19 @@ def heuristic_e1(state: "game.Game") -> int:
     my_ai_coord = None
     for (coord,unit) in state.player_units(PlayerTeam.Defender):
         if unit.type == UnitType.AI:
-            total_hp -= unit.health*10 # Your AI being alive is VERY important.
+            total_hp += unit.health*10 # Your AI being alive is VERY important.
             my_ai_coord = coord
         else:
-            total_hp -= unit.health # Your army being alive in general is kind of important.
+            total_hp += unit.health # Your army being alive in general is kind of important.
     if my_ai_coord == None:
-        return 9999 # Losing the game is REALLY BAD.
+        return -9999 # Losing the game is REALLY BAD.
     for (coord,unit) in state.player_units(PlayerTeam.Attacker):
         if unit.type == UnitType.Virus:
-            total_hp += unit.health*(10 - Coord.get_manhattan_distance(coord, my_ai_coord)) # Viruses are bad. Viruses close to your AI is REALLY BAD.
+            total_hp -= unit.health*(10 - Coord.get_manhattan_distance(coord, my_ai_coord)) # Viruses are bad. Viruses close to your AI is REALLY BAD.
         elif unit.type == UnitType.AI:
-            total_hp += unit.health*5 # The attacker should be protecting its AI too. And the defender might be interested in killing it over just stalling.
+            total_hp -= unit.health*5 # The attacker should be protecting its AI too. And the defender might be interested in killing it over just stalling.
         else:
-            total_hp += unit.health*2 # Your enemy being alive in general is bad.
+            total_hp -= unit.health*2 # Your enemy being alive in general is bad.
     return total_hp
 
 # e1, but also assign score based on how many moves each player can do.

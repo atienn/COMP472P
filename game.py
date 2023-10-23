@@ -219,7 +219,7 @@ class Game:
 
     def attempt_move(self, coords: CoordPair):
         action, descriptor = self.determine_action(coords)
-        log(descriptor)
+        # log(descriptor)
         return self.perform_move(coords, action)
 
     def perform_move(self, coords: CoordPair, action: UnitAction) -> Tuple[bool,str]:
@@ -387,6 +387,7 @@ class Game:
         leaf_nodes_num = 0
 
         start_time = datetime.now()
+        is_maximizing = self.next_player == PlayerTeam.Defender # defender is MAX
 
         while Node.out_of_time_check(root, start_time) < self.options.max_time*0.9: # While at least 10% of the time limit remains...
             for i in next_nodes_to_search: # Give all leaf nodes new children.
@@ -398,7 +399,6 @@ class Game:
                 if Node.out_of_time_check(root, start_time) > self.options.max_time*0.9: # Having 10% time left instantly stops tree construction.
                     break 
             # runs alpha-beta or minimax on the tree (depending on whichever is set active)
-            is_maximizing = self.next_player.value == PlayerTeam.Defender # defender is MAX
             best_move = Node.run_alphabeta(root, is_maximizing) if self.options.alpha_beta else Node.run_minimax(root, is_maximizing)
             self.cumulative_evals += len(nodes_queued)
             if self.cumulative_evals_per_depth.get(current_max_depth) == None:
@@ -409,7 +409,6 @@ class Game:
             if current_max_depth < self.options.max_depth: # Increase the depth while we still have time. If we haven't reached the max depth, that is.
                 current_max_depth += 1
             else:
-                print("bai")
                 break
         
         # return the coordpair that represents enacting the best move found
