@@ -241,9 +241,11 @@ class Game:
         if action == UnitAction.Attack:
             # both units should always deal the same damage to one another, 
             # but do damage the calculation both ways just in case
+            lost_amount_atk = actingUnit.damage_amount(otherUnit)
+            lost_amount_def = otherUnit.damage_amount(actingUnit)
             self.mod_health(coords.dst, -actingUnit.damage_amount(otherUnit))
             self.mod_health(coords.src, -otherUnit.damage_amount(actingUnit))
-            return (True,f"{self.next_player.name}'s {actingUnit.unit_name_string()} at {coords.src.to_string()} attacks the {otherUnit.unit_name_string()} at {coords.dst.to_string()}! ({actingUnit.damage_amount(otherUnit)} damage dealt, {otherUnit.damage_amount(actingUnit)} damage taken as retaliation)\n")
+            return (True,f"{self.next_player.name}'s {actingUnit.unit_name_string()} at {coords.src.to_string()} attacks the {otherUnit.unit_name_string()} at {coords.dst.to_string()}! ({lost_amount_atk} damage dealt, {lost_amount_def} damage taken as retaliation)\n")
         if action == UnitAction.Repair:
             health_value = actingUnit.repair_amount(otherUnit)
             otherUnit.mod_health(health_value)
