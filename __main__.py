@@ -51,7 +51,7 @@ def main():
     game = Game(options=options)
 
     if not (args.no_file_output):
-        FileOutput.open_file("game_trace_[{}]_[{}]_[{}]".format(options.alpha_beta, options.max_time, options.max_turns))
+        FileOutput.open_file("game_trace_{}_{}_{}".format(options.alpha_beta, options.max_time, options.max_turns))
 
     # the main game loop
     log("Welcome to AI Wargame. Destroy the enemy AI to win!")

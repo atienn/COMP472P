@@ -56,6 +56,9 @@ class Game:
     board: list[list[Unit | None]] = field(default_factory=list)
     next_player: PlayerTeam = PlayerTeam.Attacker
     turns_played : int = 0
+    cumulative_evals : int = 0
+    cumulative_evals_per_depth = {}
+    average_branch_factor : int = 0
     options: Options = field(default_factory=Options)
     stats: Stats = field(default_factory=Stats)
     _attacker_has_ai : bool = True
@@ -379,29 +382,41 @@ class Game:
         next_nodes_to_search = [root]
         nodes_queued = []
         current_max_depth = 1 # Start at the not very ambitious min depth
+
+        tree_size = 0
+        leaf_nodes_num = 0
+
         start_time = datetime.now()
 
         while Node.out_of_time_check(root, start_time) < self.options.max_time*0.9: # While at least 10% of the time limit remains...
             for i in next_nodes_to_search: # Give all leaf nodes new children.
                 # generate the node tree under the node representing the current game state
-                nodes_queued += Node.generate_node_tree(i)
+                new_nodes = Node.generate_node_tree(i)
+                nodes_queued += new_nodes
+                leaf_nodes_num += len(new_nodes) - 1
+                tree_size += len(new_nodes)
                 if Node.out_of_time_check(root, start_time) > self.options.max_time*0.9: # Having 10% time left instantly stops tree construction.
                     break 
             # runs alpha-beta or minimax on the tree (depending on whichever is set active)
             is_maximizing = self.next_player.value == PlayerTeam.Defender # defender is MAX
             best_move = Node.run_alphabeta(root, is_maximizing) if self.options.alpha_beta else Node.run_minimax(root, is_maximizing)
-
+            self.cumulative_evals += len(nodes_queued)
+            if self.cumulative_evals_per_depth.get(current_max_depth) == None:
+                self.cumulative_evals_per_depth[current_max_depth] = 0
+            self.cumulative_evals_per_depth[current_max_depth] += len(nodes_queued)
             next_nodes_to_search = nodes_queued # The leaf nodes are recorded to continue building where we left off in the first loop.
             nodes_queued = []
             if current_max_depth < self.options.max_depth: # Increase the depth while we still have time. If we haven't reached the max depth, that is.
                 current_max_depth += 1
             else:
+                print("bai")
                 break
         
         # return the coordpair that represents enacting the best move found
-        # TODO: retrieve and return the third tuple argument, which represents the average depth searched
-        print("best_move" + best_move.__str__())
-        print("best.move.action" + best_move.action.__str__())
+        # print("best_move" + best_move.__str__())
+        # print("best.move.action" + best_move.action.__str__())
+        non_leaf_node_amount = tree_size - leaf_nodes_num
+        self.average_branch_factor = round(tree_size/non_leaf_node_amount,4)
         return (best_move.value, best_move.action, 0)
         
     def random_next_state(self) -> tuple[Game, CoordPair, UnitAction]:
@@ -426,17 +441,17 @@ class Game:
         elapsed_seconds = (datetime.now() - start_time).total_seconds()
         self.stats.total_seconds += elapsed_seconds
         log(f"Heuristic score: {score}")
-        # log(f"Average recursive depth: {avg_depth:0.1f}") # In accordance with the Moodle statement, this should be removed
-        log(f"Evals per depth: ",end='')
-        
-        for k in sorted(self.stats.evaluations_per_depth.keys()):
-            log(f"{k}:{self.stats.evaluations_per_depth[k]} ", end='')
-        log()
-        
-        total_evals = sum(self.stats.evaluations_per_depth.values())
-        if self.stats.total_seconds > 0:
-            log(f"Eval perf.: {total_evals/self.stats.total_seconds/1000:0.1f}k/s")
-        log(f"Elapsed time: {elapsed_seconds:0.1f}s")
+        log(f"Cumulative evals: {self.cumulative_evals}")
+        all_depths_evals = ""
+        all_depths_evals_percent = ""
+        list_of_depths = list(self.cumulative_evals_per_depth.values())
+        for i in range(0,len(list_of_depths)):
+            all_depths_evals += " " + str(i+1) + "=" + str(list_of_depths[i])
+            all_depths_evals_percent += " " + str(i+1) + "=" + str(round(list_of_depths[i]/self.cumulative_evals*100, 2)) + "%"
+        log(f"Cumulative evals by depth: {all_depths_evals}")
+        log(f"Cumulative evals % by depth: {all_depths_evals_percent}")
+        log(f"Average branching factor: {self.average_branch_factor}")
+        log(f"Elapsed time for this action: {elapsed_seconds:0.1f}s")
         
         return move
 
